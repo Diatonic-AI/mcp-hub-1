@@ -1,0 +1,68 @@
+# Node modules and cache
+node_modules/
+.npm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Source code (we only need the built dist/cli.js)
+src/
+scripts/
+tests/
+examples/
+coverage/
+
+# Development files
+.git/
+.gitignore
+*.md
+!README.md
+!LICENSE.md
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Development configs
+.env*
+.eslintrc*
+eslint.config.js
+vitest.config.js
+nodemon.json
+flake.*
+
+# Docker files (avoid recursion)
+Dockerfile*
+.dockerignore*
+docker-compose*.yml
+
+# Logs and runtime data
+logs/
+*.log
+pids/
+*.pid
+
+# Local development configs and scripts  
+wix-mcp-config.json
+warp-terminal-mcp-config.json
+start-mcp-hub.sh
+INTEGRATION_GUIDE.md
+DOCKER_GUIDE.md
+docker-*.sh
+docker/
+
+# Build artifacts we don't need to copy
+# (keep dist/cli.js since we need it)
+
+# Everything else except what we explicitly need
+*
+!dist/cli.js
+!package.json
+!LICENSE.md
+!README.md

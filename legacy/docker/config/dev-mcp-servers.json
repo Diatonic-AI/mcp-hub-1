@@ -1,0 +1,33 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "description": "Filesystem access server for development testing"
+    },
+    "wix-mcp-remote": {
+      "url": "https://mcp.wix.com/mcp",
+      "description": "Wix MCP remote server for testing HTTP transport",
+      "disabled": true
+    },
+    "test-sse-server": {
+      "type": "sse",
+      "url": "http://localhost:8080/sse",
+      "headers": {
+        "Authorization": "Bearer dev-test-token"
+      },
+      "description": "Development SSE test server",
+      "disabled": true
+    },
+    "local-dev-server": {
+      "command": "echo",
+      "args": ["Development server placeholder"],
+      "description": "Placeholder for local development server",
+      "disabled": true,
+      "dev": {
+        "watch": ["./src/**/*.js", "./config/**/*.json"],
+        "ignore": ["node_modules", "dist", "logs"]
+      }
+    }
+  }
+}

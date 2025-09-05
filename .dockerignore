@@ -1,0 +1,81 @@
+# Node modules and cache
+node_modules/
+.npm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Source code - allow src/ for REST API server
+# src/ - ALLOWED for REST API server
+# tests/ - ALLOWED for build stage testing
+# examples/ - ALLOWED for build stage inclusion
+coverage/
+
+# Development files
+.git/
+.gitignore
+*.md
+!README.md
+!LICENSE.md
+!WARP.md
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Development configs
+.env*
+.eslintrc*
+eslint.config.js
+vitest.config.js
+nodemon.json
+flake.*
+
+# Docker files (avoid recursion)
+# Keep Dockerfile and docker-compose files in the build context.
+# Exclude only helper or backup dockerfiles that end with .optimized or similar if needed.
+.dockerignore*
+
+# Logs and runtime data
+logs/
+*.log
+pids/
+*.pid
+
+# Local development configs and scripts  
+wix-mcp-config.json
+warp-terminal-mcp-config.json
+start-mcp-hub.sh
+docker-*.sh
+# Keep build and deploy scripts, configs, and docker assets in the context
+!scripts/
+!config/
+#!configs/ (merged into config/)
+!docker/
+
+# Build artifacts we don't need to copy
+# (keep dist/cli.js since we need it)
+
+# Everything else except what we explicitly need
+*
+!dist/cli.js
+!src/
+!scripts/
+!tests/
+!examples/
+!package.json
+!package-lock.json
+!config/mcp-servers.json
+!config/wix-mcp-config.json
+!config/warp-terminal-mcp-config.json
+!LICENSE.md
+!README.md
+!docker/
+!docker/scripts/
+!docker/config/

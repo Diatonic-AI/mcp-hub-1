@@ -1,0 +1,50 @@
+# Development Dockerfile with hot-reloading
+FROM node:24.7.0-alpine
+
+# Install development dependencies (DNS is now fixed in Docker daemon)
+RUN apk update && apk add --no-cache \
+    git \
+    python3 \
+    make \
+    g++ \
+    curl \
+    bash
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S mcp-hub -u 1001 -G nodejs
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files first for better Docker layer caching
+COPY --chown=mcp-hub:nodejs package*.json ./
+
+# Create directories for configurations, data, logs, and node_modules with proper permissions
+RUN mkdir -p /app/config /app/data /app/logs /app/node_modules && \
+    chown -R mcp-hub:nodejs /app
+
+# Install all dependencies (including dev dependencies for development)
+USER mcp-hub
+RUN npm install
+
+# Copy source code (this will be overridden by volume mount in dev)
+COPY --chown=mcp-hub:nodejs . .
+
+# Switch to non-root user
+USER mcp-hub
+
+# Expose port (development uses 3001)
+EXPOSE 3001
+
+# Development health check with more verbose output
+HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-3001}/api/health || exit 1
+
+# Set development environment variables
+ENV NODE_ENV=development
+ENV PORT=3001
+ENV DEBUG=mcp-hub:*
+
+# Use the same CLI structure as the main application with watch enabled
+CMD ["node", "src/utils/cli.js", "--port", "3001", "--config", "/app/config/mcp-servers.json", "--watch"]

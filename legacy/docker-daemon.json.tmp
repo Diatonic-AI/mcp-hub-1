@@ -1,0 +1,27 @@
+{
+  "storage-driver": "overlay2",
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "5"
+  },
+  "live-restore": true,
+  "userland-proxy": false,
+  "default-ulimits": {
+    "nofile": {
+      "Hard": 64000,
+      "Name": "nofile",
+      "Soft": 64000
+    }
+  },
+  "dns": ["8.8.8.8", "8.8.4.4", "1.1.1.1"],
+  "dns-opts": ["ndots:2", "edns0"],
+  "bip": "172.17.0.1/16",
+  "fixed-cidr": "172.17.0.0/24",
+  "default-address-pools": [
+    {
+      "base": "172.18.0.0/16",
+      "size": 24
+    }
+  ]
+}

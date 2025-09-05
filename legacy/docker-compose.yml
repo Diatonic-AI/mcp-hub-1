@@ -1,0 +1,102 @@
+services:
+  mcp-hub:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: mcp-hub
+    restart: unless-stopped
+    
+    # Port mapping
+    ports:
+      - "37373:37373"
+      - "8001:8001"  # Google Workspace MCP server port
+    
+    # Environment variables
+    environment:
+      - NODE_ENV=production
+      - PORT=37373
+      - WIX_OAUTH_CLIENT_ID=e2c8a702-1e3f-473e-90d7-320c3bbf108b
+      - WIX_OAUTH_REDIRECT_URL=http://localhost:37373/api/oauth/callback
+      # Add your WIX_API_TOKEN here or via .env file
+      # - WIX_API_TOKEN=your-token-here
+      
+      # Wix Configuration
+      - WIX_AUTO_AUTH=${WIX_AUTO_AUTH:-true}
+      - WIX_AUTH_TIMEOUT=${WIX_AUTH_TIMEOUT:-300}
+      - DISABLE_WIX=${DISABLE_WIX:-false}
+      
+      # Google Workspace Configuration
+      - GOOGLE_WORKSPACE_AUTO_AUTH=${GOOGLE_WORKSPACE_AUTO_AUTH:-true}
+      - GOOGLE_WORKSPACE_HOST=localhost
+      - GOOGLE_WORKSPACE_PORT=8001
+      - GOOGLE_WORKSPACE_AUTH_TIMEOUT=300
+      - DISABLE_GOOGLE_WORKSPACE=${DISABLE_GOOGLE_WORKSPACE:-false}
+      - DISPLAY=${DISPLAY:-}
+    
+    # Environment file (create .env with your secrets)
+    env_file:
+      - .env
+    
+    # Volume mounts for configuration and data persistence
+    volumes:
+      # Application and config directories
+      - ./docker/config:/app/config:ro
+      - ./docker/data:/app/data
+      - ./docker/logs:/app/logs
+      # Mount the sanitized configuration
+      - ./mcp-servers.json:/app/config/mcp-servers.json:ro
+      
+      # Safe filesystem access mounts
+      - ${HOME}:/home/${USER:-daclab-ai}:ro  # User home directory
+      - /tmp:/tmp  # Temporary files
+      - .:/workspace:ro  # Project workspace (read-only)
+      
+      # X11 forwarding for browser access (Linux only)
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${HOME}/.Xauthority:/home/mcp-hub/.Xauthority:ro
+      
+      # Optional: Enable host-specific mounts with a profile
+      # Uncomment the profiles section and these mounts if needed
+      # - /mnt/media-storage:/mnt/media-storage:ro
+      # - /var/lib/docker:/var/lib/docker:ro
+      # - /srv/apt:/srv/apt:ro
+      # - /var/lib/rancher/k3s:/var/lib/rancher/k3s:ro
+    
+    # Optional profile for host-specific mounts
+    # profiles:
+    #   - host-mounts
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); const options = { host: 'localhost', port: process.env.PORT || 37373, path: '/api/health', timeout: 5000 }; const req = http.get(options, (res) => process.exit(res.statusCode === 200 ? 0 : 1)); req.on('error', () => process.exit(1));"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Networks - using default bridge
+    # networks:
+    #   - mcp-network
+
+volumes:
+  mcp-hub-data:
+    driver: local
+  mcp-hub-logs:
+    driver: local

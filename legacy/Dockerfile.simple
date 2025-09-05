@@ -1,0 +1,36 @@
+# Minimal production Dockerfile using pre-built assets
+FROM node:24.7.0-alpine
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S mcp-hub -u 1001 -G nodejs
+
+# Set working directory
+WORKDIR /app
+
+# Copy only the built CLI file (pre-built locally)
+COPY --chown=mcp-hub:nodejs dist/cli.js ./cli.js
+
+# Copy package.json for metadata (optional)
+COPY --chown=mcp-hub:nodejs package.json ./
+
+# Create directories for configurations and data
+RUN mkdir -p /app/config /app/data /app/logs && \
+    chown -R mcp-hub:nodejs /app/config /app/data /app/logs
+
+# Switch to non-root user
+USER mcp-hub
+
+# Expose port (default 37373)
+EXPOSE 37373
+
+# Simple health check using node's http module (no external dependencies)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD node -e "const http = require('http'); const options = { host: 'localhost', port: process.env.PORT || 37373, path: '/api/health', timeout: 5000 }; const req = http.get(options, (res) => process.exit(res.statusCode === 200 ? 0 : 1)); req.on('error', () => process.exit(1)); req.setTimeout(5000, () => process.exit(1));" || exit 1
+
+# Set default environment variables
+ENV NODE_ENV=production
+ENV PORT=37373
+
+# Default command - can be overridden
+CMD ["node", "cli.js", "--port", "37373", "--config", "/app/config/mcp-servers.json"]

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "mcp-hub": {
+      "url": "http://localhost:37373/mcp",
+      "type": "sse",
+      "description": "MCP Hub - Unified access to all connected MCP servers with 64 tools across 7 servers"
+    }
+  }
+}

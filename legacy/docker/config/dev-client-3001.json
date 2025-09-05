@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "Hub": {
+      "url": "http://localhost:3001/mcp",
+      "description": "MCP Hub development server on port 3001"
+    }
+  }
+}

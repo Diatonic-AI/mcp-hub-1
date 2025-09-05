@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  google-workspace:
+    build:
+      context: ./docker/google-workspace
+      dockerfile: Dockerfile
+    container_name: mcp-google-workspace
+    restart: unless-stopped
+    ports:
+      - "8001:8000"  # OAuth callback port
+    environment:
+      # Google OAuth credentials - set these in .env file or environment
+      - GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID}
+      - GOOGLE_OAUTH_CLIENT_SECRET=${GOOGLE_OAUTH_CLIENT_SECRET}
+      - USER_GOOGLE_EMAIL=${USER_GOOGLE_EMAIL:-}
+      - OAUTHLIB_INSECURE_TRANSPORT=${OAUTHLIB_INSECURE_TRANSPORT:-1}
+      # Optional: Google Custom Search
+      - GOOGLE_PSE_API_KEY=${GOOGLE_PSE_API_KEY:-}
+      - GOOGLE_PSE_ENGINE_ID=${GOOGLE_PSE_ENGINE_ID:-}
+      # MCP Transport mode
+      - MCP_TRANSPORT=stdio
+    volumes:
+      # Persist OAuth tokens
+      - google-auth:/root/.mcp-auth
+      - google-cache:/root/.cache
+    networks:
+      - mcp-network
+    stdin_open: true
+    tty: true
+
+  microsoft-learn:
+    build:
+      context: ./docker/microsoft-learn
+      dockerfile: Dockerfile
+    container_name: mcp-microsoft-learn
+    restart: unless-stopped
+    ports:
+      - "8002:8000"  # SSE server port
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/sse"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  google-auth:
+    driver: local
+  google-cache:
+    driver: local
+
+networks:
+  mcp-network:
+    driver: bridge
+    name: mcp-hub-network

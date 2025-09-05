@@ -1,0 +1,42 @@
+# Optimized production-only Dockerfile using pre-built assets
+FROM node:24.7.0-alpine AS production
+
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init curl
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S mcp-hub -u 1001 -G nodejs
+
+# Set working directory
+WORKDIR /app
+
+# Copy only the built CLI file (pre-built locally)
+COPY --chown=mcp-hub:nodejs dist/cli.js ./cli.js
+
+# Copy package.json for metadata (optional)
+COPY --chown=mcp-hub:nodejs package.json ./
+
+# Create directories for configurations and data
+RUN mkdir -p /app/config /app/data /app/logs && \
+    chown -R mcp-hub:nodejs /app/config /app/data /app/logs
+
+# Switch to non-root user
+USER mcp-hub
+
+# Expose port (default 37373)
+EXPOSE 37373
+
+# Health check using curl for reliability
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-37373}/api/health || exit 1
+
+# Set default environment variables
+ENV NODE_ENV=production
+ENV PORT=37373
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Default command - can be overridden
+CMD ["node", "cli.js", "--port", "37373", "--config", "/app/config/mcp-servers.json"]

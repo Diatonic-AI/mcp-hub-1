@@ -1,0 +1,32 @@
+node_modules
+mcphub.nvim/
+.env
+*.tgz
+dist/
+*.avanterules
+*.log
+.r*
+build/
+/result
+junk/
+
+# Environment files (all variations)
+.env*
+!.env.example
+!.env.template
+
+# MCP Server configurations with potential secrets
+mcp-servers.json
+config/mcp-servers.json
+config/wix-mcp-config.json
+config/*-config.json
+
+# Credentials directory
+config/credentials/
+
+# Data directories with potential sensitive info
+data/
+docker/data/
+
+# Legacy configurations
+legacy/docker/config/mcp-servers.json

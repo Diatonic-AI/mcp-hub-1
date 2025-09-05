@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  mcp-hub:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: mcp-hub
+    restart: unless-stopped
+    
+    # Use the default Dockerfile CMD
+    
+    # Port mapping
+    ports:
+      - "37373:37373"
+    
+    # Environment variables
+    environment:
+      - NODE_ENV=production
+      - PORT=37373
+      - WIX_OAUTH_CLIENT_ID=G9lPrt5bqvEnSctc
+      - WIX_OAUTH_REDIRECT_URL=http://localhost:3000/callback
+      # Add your WIX_API_TOKEN here or via .env file
+      # - WIX_API_TOKEN=your-token-here
+    
+    # Environment file (create .env with your secrets)
+    env_file:
+      - .env
+    
+    # Volume mounts for configuration and data persistence
+    volumes:
+      - ./docker/config:/app/config:ro
+      - ./docker/data:/app/data
+      - ./docker/logs:/app/logs
+      # Ensure mcp-servers.json is available if not built into image
+      - ./mcp-servers.json:/app/config/mcp-servers.json:ro
+      # Volume mounts for filesystem MCP server access
+      - /home/daclab-ai:/home/daclab-ai:ro
+      - /tmp:/tmp
+      - /mnt/media-storage:/mnt/media-storage:ro
+      - /mnt/db:/mnt/db:ro
+      - /mnt/db-shared:/mnt/db-shared:ro
+      - /mnt/db-production:/mnt/db-production:ro
+      - /mnt/buffalo-backup:/mnt/buffalo-backup:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /srv/apt:/srv/apt:ro
+      - /var/lib/rancher/k3s:/var/lib/rancher/k3s:ro
+      - /mnt:/mnt:ro
+      - /var:/var:ro
+      - /lib:/lib:ro
+      - /opt:/opt:ro
+    
+    # Health check override (optional)
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); const options = { host: 'localhost', port: process.env.PORT || 37373, path: '/api/health', timeout: 5000 }; const req = http.get(options, (res) => process.exit(res.statusCode === 200 ? 0 : 1)); req.on('error', () => process.exit(1));"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    
+    # Resource limits (optional)
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Networks
+    networks:
+      - mcp-network
+
+  # Optional: Add a reverse proxy if needed
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: mcp-nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./docker/nginx:/etc/nginx/conf.d:ro
+  #   depends_on:
+  #     - mcp-hub
+  #   networks:
+  #     - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge
+
+volumes:
+  mcp-hub-data:
+    driver: local
+  mcp-hub-logs:
+    driver: local

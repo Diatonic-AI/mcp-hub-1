@@ -1,0 +1,140 @@
+networks:
+  mcp-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+services:
+  mcp-hub:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: mcp-hub
+    restart: unless-stopped
+    
+    # Secure bridge network configuration
+    networks:
+      - mcp-network
+    
+    # Port mapping for bridge network
+    ports:
+      - "127.0.0.1:37373:37373"  # Bind only to localhost interface
+    
+    # Environment variables
+    environment:
+      - NODE_ENV=production
+      - PORT=37373
+      - HOST=0.0.0.0  # Bind to all container interfaces (within container only)
+      - WIX_OAUTH_CLIENT_ID=e2c8a702-1e3f-473e-90d7-320c3bbf108b
+      - WIX_OAUTH_REDIRECT_URL=http://localhost:37373/api/oauth/callback
+      # Hub Server URL for OAuth callbacks - accessible from host
+      - HUB_SERVER_URL=http://localhost:37373
+      # Add your WIX_API_TOKEN here or via .env file
+      # - WIX_API_TOKEN=your-token-here
+      
+      # Wix Configuration
+      - WIX_AUTO_AUTH=${WIX_AUTO_AUTH:-true}
+      - WIX_AUTH_TIMEOUT=${WIX_AUTH_TIMEOUT:-300}
+      - DISABLE_WIX=${DISABLE_WIX:-false}
+      
+      # Google Workspace Configuration (for bridge networking)
+      - GOOGLE_WORKSPACE_AUTO_AUTH=${GOOGLE_WORKSPACE_AUTO_AUTH:-true}
+      - GOOGLE_WORKSPACE_HOST=mcp-hub
+      - GOOGLE_WORKSPACE_PORT=8001
+      - GOOGLE_WORKSPACE_AUTH_TIMEOUT=300
+      - DISABLE_GOOGLE_WORKSPACE=${DISABLE_GOOGLE_WORKSPACE:-false}
+      
+      # Container environment configuration
+      - DISPLAY=${DISPLAY:-}
+      - XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-}
+    
+    # Environment file (create .env with your secrets)
+    env_file:
+      - .env
+    
+    # Volume mounts for configuration and data persistence
+    volumes:
+      # Application and config directories
+      - ./config:/app/config:ro
+      - mcp-hub-data:/app/data
+      - mcp-hub-logs:/app/logs
+      
+      # UV cache for faster Python package installs
+      - uv-cache:/home/mcp/.cache/uv
+      # Node.js global modules cache
+      - node-global-cache:/home/mcp/.npm
+      
+      # Essential filesystem access for MCP servers (secured)
+      - /home/daclab-ai:/home/daclab-ai:rw  # Required for filesystem MCP server - user home only
+      - /tmp:/tmp:rw    # Temporary files access
+      - .:/workspace:ro # Project workspace (read-only)
+      
+      # X11 forwarding for OAuth flows (Linux only) - minimal access
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${HOME}/.Xauthority:/home/mcp/.Xauthority:ro
+    
+    # Optional profile for host-specific mounts
+    # profiles:
+    #   - host-mounts
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); const options = { host: 'localhost', port: process.env.PORT || 37373, path: '/api/health', timeout: 5000 }; const req = http.get(options, (res) => process.exit(res.statusCode === 200 ? 0 : 1)); req.on('error', () => process.exit(1));"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    
+    # Resource limits (3x increased for MCP server ecosystem)
+    deploy:
+      resources:
+        limits:
+          memory: 1536M  # 3x increase from 512M
+          cpus: '1.5'    # 3x increase from 0.5
+        reservations:
+          memory: 384M   # 3x increase from 128M
+          cpus: '0.3'    # 3x increase from 0.1
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+  python-mcp:
+    build:
+      context: ./docker/python-mcp
+      dockerfile: Dockerfile
+    container_name: python-mcp
+    restart: unless-stopped
+    profiles: ["python-mcp"]
+    
+    # Secure bridge network configuration
+    networks:
+      - mcp-network
+    
+    # Share uv tool cache with hub (optional) for faster installs if hub still invokes uvx
+    volumes:
+      - uv-cache:/root/.cache/uv
+      # Essential filesystem access for Python MCP servers
+      - /home/daclab-ai:/home/daclab-ai:rw
+      - /tmp:/tmp:rw
+    # No ports exposed; stdio processes will be spawned later via docker exec (future improvement)
+    healthcheck:
+      test: ["CMD", "bash", "-c", "command -v uvx >/dev/null 2>&1"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  mcp-hub-data:
+    driver: local
+  mcp-hub-logs:
+    driver: local
+  uv-cache:
+    driver: local
+  node-global-cache:
+    driver: local

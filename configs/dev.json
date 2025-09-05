@@ -1,0 +1,8 @@
+{
+  "hub": {
+    "metaOnly": true,
+    "lazyLoad": true,
+    "idleTimeoutMs": 240000
+  }
+}
+

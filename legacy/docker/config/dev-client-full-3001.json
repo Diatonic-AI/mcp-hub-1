@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "Hub": {
+      "url": "http://localhost:3001/mcp",
+      "transport": "sse",
+      "description": "MCP Hub development server",
+      "clientInfo": {
+        "name": "DevContainer-TestClient",
+        "version": "1.0.0"
+      }
+    }
+  }
+}

@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  mcp-hub-dev:
+    build: 
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: mcp-hub-dev
+    restart: unless-stopped
+    
+    # Port mapping - not needed with host network mode
+    # ports:
+    #   - "3001:3001"
+    #   - "9229:9229"  # Node.js debugger port
+    
+    # Development environment variables
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DEBUG=mcp-hub:*
+      - NODE_OPTIONS=--inspect=0.0.0.0:9229
+      - WIX_OAUTH_CLIENT_ID=G9lPrt5bqvEnSctc
+      - WIX_OAUTH_REDIRECT_URL=http://localhost:3000/callback
+    
+    # Environment file for development secrets (create from .env.example)
+    env_file:
+      - .env.dev
+    
+    # Volume mounts for hot-reloading and data persistence
+    volumes:
+      # Source code hot-reloading
+      - ./src:/app/src:ro
+      - ./tests:/app/tests:ro
+      - ./package.json:/app/package.json:ro
+      - ./scripts:/app/scripts:ro
+      
+      # Use existing config structure
+      - ./docker/config:/app/config
+      - ./docker/data:/app/data
+      - ./docker/logs:/app/logs
+      - ./configs:/app/configs:ro
+      
+      # Mount custom MCP servers from host
+      - /home/daclab-ai/dev/custom-mcp-servers:/custom-mcp-servers
+      
+      # Node modules (for faster rebuilds)
+      - mcp-hub-dev-node-modules:/app/node_modules
+    
+    # Override command for development with nodemon for better hot-reloading
+    # Use the same CLI pattern as the main application
+    command: >
+      sh -c '
+        npm install &&
+        npx nodemon --watch src --watch config --ext js,json --exec "node src/utils/cli.js --port 3001 --config /app/config/mcp-servers.json --watch"
+      '
+    
+    # Development health check with more frequent checks
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    
+    # Resource limits (more generous for development)
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.2'
+    
+    # Enhanced logging for development
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    
+    # Use host network mode to access localhost services
+    network_mode: "host"
+
+  # Development test runner service
+  mcp-hub-test:
+    build: 
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: mcp-hub-test
+    profiles:
+      - test
+    
+    # Volume mounts same as main service
+    volumes:
+      - ./src:/app/src:ro
+      - ./tests:/app/tests:ro
+      - ./package.json:/app/package.json:ro
+      - ./package-lock.json:/app/package-lock.json:ro
+      - mcp-hub-dev-node-modules:/app/node_modules
+    
+    # Environment for testing
+    environment:
+      - NODE_ENV=test
+      - DEBUG=mcp-hub:test
+    
+    # Test command with watch mode
+    command: npm run test:watch
+
+# Networks not used with host mode
+# networks:
+#   mcp-dev-network:
+#     driver: bridge
+
+volumes:
+  mcp-hub-dev-node-modules:
+    driver: local
+  mcp-hub-dev-data:
+    driver: local
+  mcp-hub-dev-logs:
+    driver: local
