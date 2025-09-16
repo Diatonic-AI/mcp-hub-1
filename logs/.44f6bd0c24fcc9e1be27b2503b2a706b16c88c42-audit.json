@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "/home/daclab-ai/dev/mcp-hub/logs/.44f6bd0c24fcc9e1be27b2503b2a706b16c88c42-audit.json",
+    "files": [
+        {
+            "date": 1757650851931,
+            "name": "/home/daclab-ai/dev/mcp-hub/logs/mcp-puppeteer-2025-09-11.log",
+            "hash": "c77b603420e265185a2594d840849ad877f47e2051fd7a98b8b341d20501c93a"
+        }
+    ],
+    "hashType": "sha256"
+}

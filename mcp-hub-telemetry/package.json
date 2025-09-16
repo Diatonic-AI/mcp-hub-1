@@ -1,0 +1,45 @@
+{
+  "name": "mcp-hub-telemetry",
+  "version": "1.0.0",
+  "description": "Comprehensive PostgreSQL-backed telemetry system for MCP Hub",
+  "main": "mcp_hub_telemetry.js",
+  "scripts": {
+    "setup-db": "node scripts/setup-database.js",
+    "test-connection": "node scripts/test-connection.js",
+    "migrate": "node scripts/migrate.js",
+    "start": "node example/integration_demo.js",
+    "dev": "nodemon example/integration_demo.js"
+  },
+  "keywords": [
+    "mcp",
+    "telemetry",
+    "postgresql",
+    "timescaledb",
+    "metrics",
+    "monitoring"
+  ],
+  "author": "DAClab AI",
+  "license": "MIT",
+  "dependencies": {
+    "pg": "^8.11.3",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0"
+  },
+  "peerDependencies": {
+    "@modelcontextprotocol/sdk": "^0.4.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/daclab-ai/mcp-hub-telemetry.git"
+  },
+  "bugs": {
+    "url": "https://github.com/daclab-ai/mcp-hub-telemetry/issues"
+  },
+  "homepage": "https://github.com/daclab-ai/mcp-hub-telemetry#readme"
+}

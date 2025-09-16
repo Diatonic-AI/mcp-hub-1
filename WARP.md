@@ -45,7 +45,7 @@ Additions require extending enums + updating README + SSE consumer tests.
 - Meta-tools must begin `hub__` and return `{ content: [...] , isError? }`.
 - Validate inputs; throw `McpError` with `ErrorCode.InvalidParams` for malformed args.
 - Auto-sync index on tool/server list changes. Avoid blocking operations without abort signals.
-- `hub__chain_tools` currently placeholder—extend only with clearly defined chain spec.
+- `hub__chain_tools` implements full Chain Spec v1.0 with advanced features: conditional execution, parallel processing, data transformations, retry logic, and comprehensive error handling.
 
 ### 4.4 `src/MCPHub.js`
 - Lifecycle: isolate config reload vs connection restart; emit `servers_updating` then `servers_updated`.
@@ -155,9 +155,9 @@ Consistency checks: ensure tool count matches per-server list after sync; log di
 - Additions must increment this section with new count & brief purpose.
 
 ## 16. Roadmap Hooks (For Future Sections)
-- Tool chaining engine (`hub__chain_tools` real implementation) – design doc required.
 - Analytics/usage metrics export – privacy review needed.
 - UI layer integration – keep REST + SSE stable.
+- Advanced chain templates and visual designer for `hub__chain_tools`.
 
 ## 17. Quick Reference Table
 | Task | File(s) | Action |
@@ -172,6 +172,68 @@ Consistency checks: ensure tool count matches per-server list after sync; log di
 ## 18. Session Log
 - 2025-09-03: Centralized tool index + meta-tools integrated.
 - 2025-09-04: README + WARP refactored with structured ruleset.
+- 2025-09-08: Fixed hub__chain_tools argument passing bug; completed Chain Spec v1.0 implementation with comprehensive documentation.
+- 2025-09-10: ML/DL Pipeline integration - database connectors, model registry, training orchestration.
+- 2025-01-20: Completed ML/DL Pipeline Step 10:
+  - Database connectors for PostgreSQL, MongoDB, Redis with unified health monitoring
+  - ML-specific error classes and HTTP status mappings
+  - PostgreSQL migrations (005-010) for complete MLOps schema
+  - BullMQ-based training orchestration with job lifecycle management
+  - Python and Node.js training adapters for flexible ML framework support
+  - Comprehensive CLI tool for job submission and monitoring
+  - Progress: 10/21 steps (47.6%) completed
+
+## 19. ML/DL Pipeline Architecture
+
+### 19.1 Meta-Tools for ML Operations
+- All ML meta-tools MUST begin with `hub__` prefix
+- Meta-tools: `hub__train_model`, `hub__hpo_status`, `hub__list_models`, `hub__register_model`, `hub__promote_model`, `hub__infer`, `hub__batch_predict`, `hub__model_health`, `hub__explain_prediction`, `hub__start_automl`, `hub__automl_status`
+- Return contract: `{ content: [...], isError?: boolean }` as per existing meta-tools
+- Validation: throw `McpError` with `ErrorCode.InvalidParams` for malformed args
+
+### 19.2 Database Connections
+- PostgreSQL: Primary system of record for ML metadata (model registry, training runs, evaluations)
+- MongoDB: Artifact storage via GridFS for model binaries and large objects
+- Redis: Feature cache, inference memoization, and BullMQ job queues
+- All connections use pooling with structured error handling via `utils/errors.js`
+
+### 19.3 ML-Specific Error Classes
+- `TrainingError`: Training pipeline failures
+- `ModelRegistryError`: Model versioning and promotion issues
+- `InferenceError`: Prediction service failures
+- `FeatureEngineeringError`: Feature computation and cache errors
+- All errors extend base `McpError` and map to HTTP status codes centrally
+
+### 19.4 SSE Events for ML Operations
+- `MODEL_REGISTRY_UPDATED`: Model registration, promotion, or archival
+- `TRAINING_STATUS_CHANGED`: Training job state transitions
+- `BATCH_PREDICTION_PROGRESS`: Batch job progress updates
+- `MODEL_DRIFT_DETECTED`: Data or performance drift alerts
+- Follow Section 11 checklist when adding new event types
+
+### 19.5 Directory Structure (src/)
+- `src/data/`: Database connectors (postgres.js, mongo.js, redis.js)
+- `src/feature_engineering/`: Feature registry, materialization, and caching
+- `src/training/`: Training orchestration, HPO, and adapters
+- `src/services/model-registry/`: Model versioning and lifecycle
+- `src/services/inference/`: Real-time prediction endpoints
+- `src/services/experiment/`: A/B testing framework
+- `src/services/explainability/`: Model interpretability
+- `src/batch/`: Batch prediction system
+- `src/monitoring/`: Drift detection and metrics collection
+- `src/observability/`: Prometheus metrics and structured logging
+
+### 19.6 Testing Requirements
+- Each ML component requires: success, failure, and boundary tests
+- Network-dependent tests skipped by default, enabled via CI secrets
+- Update test coverage summary after adding new test files
+- Smoke tests under `scripts/smoke/` for ML pipeline validation
+
+### 19.7 Security and Compliance
+- Never log model parameters, training data, or predictions
+- Redact PII and sensitive features before logging
+- Tenant isolation enforced via PostgreSQL RLS policies
+- Model artifacts encrypted at rest in MongoDB GridFS
 
 ---
 This WARP file is the authoritative operational contract for source-level contributions. Append new sections rather than rewriting existing ones.

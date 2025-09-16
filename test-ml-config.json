@@ -1,0 +1,45 @@
+{
+  "telemetry": {
+    "enabled": true,
+    "collectUsageMetrics": true,
+    "collectErrorMetrics": true,
+    "reportingInterval": 60000,
+    "endpoints": {
+      "metrics": "http://localhost:9090/metrics",
+      "logs": "http://localhost:3100/loki/api/v1/push"
+    }
+  },
+  "mlPipeline": {
+    "enabled": true,
+    "trainingQueue": {
+      "concurrency": 2,
+      "defaultTimeout": 3600000
+    },
+    "modelRegistry": {
+      "path": "./models",
+      "autoVersion": true
+    },
+    "dataConnectors": {
+      "postgres": {
+        "enabled": true,
+        "connectionUrl": "postgresql://localhost:5432/mcp_ml"
+      },
+      "mongodb": {
+        "enabled": true,
+        "uri": "mongodb://localhost:27017/mcp_ml"
+      },
+      "redis": {
+        "enabled": true,
+        "host": "localhost",
+        "port": 6379
+      }
+    }
+  },
+  "mcpServers": {
+    "filesystem": {
+      "command": "node",
+      "args": ["/usr/local/lib/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js", "/tmp"],
+      "disabled": true
+    }
+  }
+}

@@ -1,0 +1,138 @@
+{
+  "docker": {
+    "enabled": true,
+    "strategy": "on-demand",
+    "maxContainers": 20,
+    "dockerConfig": {
+      "socketPath": "/var/run/docker.sock",
+      "imagePrefix": "mcp-servers",
+      "networkName": "mcp-hub-network",
+      "cleanupOnShutdown": true
+    },
+    "serverConfigs": {
+      "filesystem": {
+        "strategy": "on-demand",
+        "volumes": {
+          "/home/daclab-ai/workspace": "/data"
+        },
+        "environment": {
+          "MCP_ALLOWED_PATHS": "/data"
+        }
+      },
+      "github": {
+        "strategy": "on-demand",
+        "environment": {
+          "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+        }
+      },
+      "mcp-postgres": {
+        "strategy": "on-demand",
+        "environment": {
+          "POSTGRES_CONNECTION_URL": "${DATABASE_URL}"
+        }
+      },
+      "mcp-sqlite": {
+        "strategy": "on-demand",
+        "volumes": {
+          "/home/daclab-ai/data/sqlite": "/data"
+        }
+      },
+      "mcp-time": {
+        "strategy": "pre-warmed",
+        "lightweight": true
+      },
+      "mcp-memory": {
+        "strategy": "always-on",
+        "lightweight": true,
+        "resourceLimits": {
+          "memory": "256m",
+          "cpus": "0.25"
+        }
+      },
+      "mcp-fetch": {
+        "strategy": "on-demand"
+      },
+      "mcp-puppeteer": {
+        "strategy": "on-demand",
+        "resourceLimits": {
+          "memory": "1g",
+          "cpus": "1"
+        }
+      },
+      "brave-search": {
+        "strategy": "on-demand",
+        "environment": {
+          "BRAVE_API_KEY": "${BRAVE_API_KEY}"
+        }
+      },
+      "everart": {
+        "strategy": "on-demand",
+        "environment": {
+          "EVERART_API_KEY": "${EVERART_API_KEY}"
+        }
+      }
+    }
+  },
+  "mcpServers": {
+    "filesystem": {
+      "transport": {
+        "type": "docker",
+        "dockerManaged": true
+      }
+    },
+    "github": {
+      "transport": {
+        "type": "docker",
+        "dockerManaged": true
+      }
+    },
+    "mcp-postgres": {
+      "transport": {
+        "type": "docker",
+        "dockerManaged": true
+      }
+    },
+    "mcp-sqlite": {
+      "transport": {
+        "type": "docker",
+        "dockerManaged": true
+      }
+    },
+    "mcp-time": {
+      "transport": {
+        "type": "docker",
+        "dockerManaged": true
+      }
+    },
+    "mcp-memory": {
+      "transport": {
+        "type": "docker",
+        "dockerManaged": true
+      }
+    },
+    "mcp-fetch": {
+      "transport": {
+        "type": "docker",
+        "dockerManaged": true
+      }
+    },
+    "mcp-puppeteer": {
+      "transport": {
+        "type": "docker",
+        "dockerManaged": true
+      }
+    },
+    "brave-search": {
+      "transport": {
+        "type": "docker",
+        "dockerManaged": true
+      }
+    },
+    "everart": {
+      "transport": {
+        "type": "docker",
+        "dockerManaged": true
+      }
+    }
+  }
+}

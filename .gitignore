@@ -30,3 +30,14 @@ docker/data/
 
 # Legacy configurations
 legacy/docker/config/mcp-servers.json
+
+# OAuth and credentials
+google-oauth-credentials.json
+config/google-oauth-credentials.json
+**/google-oauth-*.json
+
+# Sensitive files
+.env.github
+.env.backup.*
+config/credentials/google-drive-credentials.json
+**/credentials/*

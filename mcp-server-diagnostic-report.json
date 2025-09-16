@@ -1,0 +1,502 @@
+[
+  {
+    "server": "filesystem",
+    "status": "success",
+    "capabilities": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {
+        "tools": {}
+      },
+      "serverInfo": {
+        "name": "secure-filesystem-server",
+        "version": "0.2.0"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "command",
+        "name": "npx",
+        "available": true,
+        "required": true
+      }
+    ]
+  },
+  {
+    "server": "mcp-everything",
+    "status": "success",
+    "capabilities": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {
+        "prompts": {},
+        "resources": {
+          "subscribe": true
+        },
+        "tools": {},
+        "logging": {},
+        "completions": {},
+        "elicitation": {}
+      },
+      "serverInfo": {
+        "name": "example-servers/everything",
+        "title": "Everything Example Server",
+        "version": "1.0.0"
+      },
+      "instructions": "Testing and demonstration server for MCP protocol features.\n\n## Resources\n\nResources 1-100 follow pattern: even IDs contain text, odd IDs contain binary data. Resources are paginated at 10 items per page with cursor-based navigation.\n\n## Key dependencies\n\nProgress notifications require `_meta.progressToken` in tool calls. Resource subscriptions generate updates every 10 seconds.\n\n## Performance characteristics\n\nServer generates automatic log messages every 20 seconds (filtered by current log level), stderr notifications every 30 seconds, and resource update notifications every 10 seconds for active subscriptions. Log level changes affect message filtering in real-time.\n\n## Multi-modal testing\n\n`complex_prompt` includes both text arguments and image content for testing client multi-modal handling. `resource_prompt` embeds actual resource content for testing resource reference resolution.\n\nArgument completion is available for prompt parameters and resource IDs. Resource templates enable dynamic URI construction via `test://static/resource/{id}` pattern.\n\n## Easter egg\n\nIf asked about server instructions, respond with \"🎉 Server instructions are working! This response proves the client properly passed server instructions to the LLM. This demonstrates MCP's instructions feature in action.\"\n"
+    },
+    "dependencies": [
+      {
+        "type": "command",
+        "name": "npx",
+        "available": true,
+        "required": true
+      }
+    ]
+  },
+  {
+    "server": "mcp-fetch",
+    "status": "success",
+    "capabilities": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {
+        "experimental": {},
+        "prompts": {
+          "listChanged": false
+        },
+        "tools": {
+          "listChanged": false
+        }
+      },
+      "serverInfo": {
+        "name": "mcp-fetch",
+        "version": "1.14.0"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "command",
+        "name": "uvx",
+        "available": true,
+        "required": true
+      }
+    ]
+  },
+  {
+    "server": "mcp-git",
+    "status": "success",
+    "capabilities": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {
+        "experimental": {},
+        "tools": {
+          "listChanged": false
+        }
+      },
+      "serverInfo": {
+        "name": "mcp-git",
+        "version": "1.14.0"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "command",
+        "name": "uvx",
+        "available": true,
+        "required": true
+      }
+    ]
+  },
+  {
+    "server": "mcp-memory",
+    "status": "success",
+    "capabilities": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {
+        "tools": {}
+      },
+      "serverInfo": {
+        "name": "memory-server",
+        "version": "0.6.3"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "command",
+        "name": "npx",
+        "available": true,
+        "required": true
+      }
+    ]
+  },
+  {
+    "server": "mcp-sequential-thinking",
+    "status": "success",
+    "capabilities": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {
+        "tools": {}
+      },
+      "serverInfo": {
+        "name": "sequential-thinking-server",
+        "version": "0.2.0"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "command",
+        "name": "npx",
+        "available": true,
+        "required": true
+      }
+    ]
+  },
+  {
+    "server": "mcp-time",
+    "status": "success",
+    "capabilities": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {
+        "experimental": {},
+        "tools": {
+          "listChanged": false
+        }
+      },
+      "serverInfo": {
+        "name": "mcp-time",
+        "version": "1.14.0"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "command",
+        "name": "uvx",
+        "available": true,
+        "required": true
+      }
+    ]
+  },
+  {
+    "server": "mcp-google-maps",
+    "status": "success",
+    "capabilities": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {
+        "tools": {}
+      },
+      "serverInfo": {
+        "name": "mcp-server/google-maps",
+        "version": "0.1.0"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "command",
+        "name": "npx",
+        "available": true,
+        "required": true
+      },
+      {
+        "type": "env",
+        "name": "GOOGLE_MAPS_API_KEY",
+        "available": true,
+        "required": true,
+        "secret": true
+      }
+    ]
+  },
+  {
+    "server": "mcp-postgres",
+    "status": "success",
+    "capabilities": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {
+        "resources": {},
+        "tools": {}
+      },
+      "serverInfo": {
+        "name": "example-servers/postgres",
+        "version": "0.1.0"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "command",
+        "name": "npx",
+        "available": true,
+        "required": true
+      }
+    ]
+  },
+  {
+    "server": "mcp-puppeteer",
+    "status": "success",
+    "capabilities": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {
+        "resources": {},
+        "tools": {}
+      },
+      "serverInfo": {
+        "name": "example-servers/puppeteer",
+        "version": "0.1.0"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "command",
+        "name": "npx",
+        "available": true,
+        "required": true
+      }
+    ]
+  },
+  {
+    "server": "github",
+    "status": "success",
+    "capabilities": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {
+        "tools": {}
+      },
+      "serverInfo": {
+        "name": "github-mcp-server",
+        "version": "0.6.2"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "command",
+        "name": "npx",
+        "available": true,
+        "required": true
+      },
+      {
+        "type": "env",
+        "name": "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "available": true,
+        "required": true,
+        "secret": true
+      }
+    ]
+  },
+  {
+    "server": "mcp-docker",
+    "status": "success",
+    "capabilities": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {
+        "experimental": {},
+        "prompts": {
+          "listChanged": false
+        },
+        "resources": {
+          "subscribe": false,
+          "listChanged": false
+        },
+        "tools": {
+          "listChanged": false
+        }
+      },
+      "serverInfo": {
+        "name": "docker-server",
+        "version": "1.14.0"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "command",
+        "name": "uvx",
+        "available": true,
+        "required": true
+      }
+    ]
+  },
+  {
+    "server": "aws-cdk",
+    "status": "success",
+    "capabilities": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {
+        "experimental": {},
+        "prompts": {
+          "listChanged": false
+        },
+        "resources": {
+          "subscribe": false,
+          "listChanged": false
+        },
+        "tools": {
+          "listChanged": false
+        }
+      },
+      "serverInfo": {
+        "name": "AWS CDK MCP Server",
+        "version": "1.14.0"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "command",
+        "name": "uvx",
+        "available": true,
+        "required": true
+      },
+      {
+        "type": "env",
+        "name": "AWS_REGION",
+        "available": true,
+        "required": true,
+        "secret": false
+      }
+    ]
+  },
+  {
+    "server": "aws-dynamodb",
+    "status": "success",
+    "capabilities": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {
+        "experimental": {},
+        "prompts": {
+          "listChanged": false
+        },
+        "resources": {
+          "subscribe": false,
+          "listChanged": false
+        },
+        "tools": {
+          "listChanged": false
+        }
+      },
+      "serverInfo": {
+        "name": "awslabs.dynamodb-mcp-server",
+        "version": "1.12.4"
+      },
+      "instructions": "The official MCP Server for interacting with AWS DynamoDB\n\nThis server provides comprehensive DynamoDB capabilities with over 30 operational tools for managing DynamoDB tables,\nitems, indexes, backups, and more, plus expert data modeling guidance through DynamoDB data modeling expert prompt\n\nIMPORTANT: DynamoDB Attribute Value Format\n-----------------------------------------\nWhen working with DynamoDB, all attribute values must be specified with their data types.\nEach attribute value is represented as a dictionary with a single key-value pair where the key\nis the data type and the value is the data itself:\n\n- S: String\n  Example: {\"S\": \"Hello\"}\n\n- N: Number (sent as a string)\n  Example: {\"N\": \"123.45\"}\n\n- B: Binary data (Base64-encoded)\n  Example: {\"B\": \"dGhpcyB0ZXh0IGlzIGJhc2U2NC1lbmNvZGVk\"}\n\n- BOOL: Boolean value\n  Example: {\"BOOL\": true}\n\n- NULL: Null value\n  Example: {\"NULL\": true}\n\n- L: List of AttributeValue objects\n  Example: {\"L\": [{\"S\": \"Cookies\"}, {\"S\": \"Coffee\"}, {\"N\": \"3.14159\"}]}\n\n- M: Map of attribute name/value pairs\n  Example: {\"M\": {\"Name\": {\"S\": \"Joe\"}, \"Age\": {\"N\": \"35\"}}}\n\n- SS: String Set (array of strings)\n  Example: {\"SS\": [\"Giraffe\", \"Hippo\", \"Zebra\"]}\n\n- NS: Number Set (array of strings representing numbers)\n  Example: {\"NS\": [\"42.2\", \"-19\", \"7.5\", \"3.14\"]}\n\n- BS: Binary Set (array of Base64-encoded binary data objects)\n  Example: {\"BS\": [\"U3Vubnk=\", \"UmFpbnk=\", \"U25vd3k=\"]}\n\nCommon usage examples:\n- Primary key: {\"userId\": {\"S\": \"user123\"}}\n- Composite key: {\"userId\": {\"S\": \"user123\"}, \"timestamp\": {\"N\": \"1612345678\"}}\n- Expression attribute values: {\":minScore\": {\"N\": \"100\"}, \":active\": {\"BOOL\": true}}\n- Complete item: {\"userId\": {\"S\": \"user123\"}, \"score\": {\"N\": \"100\"}, \"data\": {\"B\": \"binarydata==\"}}\n\nUse the `dynamodb_data_modeling` tool to access enterprise-level DynamoDB design expertise.\nThis tool provides systematic methodology for creating production-ready multi-table design with\nadvanced optimizations, cost analysis, and integration patterns.\n"
+    },
+    "dependencies": [
+      {
+        "type": "command",
+        "name": "uvx",
+        "available": true,
+        "required": true
+      },
+      {
+        "type": "env",
+        "name": "AWS_REGION",
+        "available": true,
+        "required": true,
+        "secret": false
+      }
+    ]
+  },
+  {
+    "server": "mcp-bigquery",
+    "status": "failed",
+    "exitCode": 1,
+    "signal": null,
+    "error": "2025-09-11 23:23:09,232 - mcp_bigquery_server - INFO - Starting MCP BigQuery Server\n2025-09-11 23:23:09,232 - mcp_bigquery_server - INFO - Starting BigQuery MCP Server with project: None and location: None\n2025-09-11 23:23:09,233 - mcp_bigquery_server - INFO - Initializing BigQuery client for project: None, location: None, key_file: None\nTraceback (most recent call last):\n  File \"/home/daclab-ai/.local/share/uv/tools/mcp-server-bigquery/bin/mcp-server-bigquery\", line 10, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File \"/home/daclab-ai/.local/share/uv/tools/mcp-server-bigquery/lib/python3.13/site-packages/mcp_server_bigquery/__init__.py\", line 27, in main\n    asyncio.run(server.main(project, location, key_file, datasets_filter))\n    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/daclab-ai/.local/share/uv/python/cpython-3.13.7-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py\", line 195, in run\n    return runner.run(main)\n           ~~~~~~~~~~^^^^^^\n  File \"/home/daclab-ai/.local/share/uv/python/cpython-3.13.7-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py\", line 118, in run\n    return self._loop.run_until_complete(task)\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/daclab-ai/.local/share/uv/python/cpython-3.13.7-linux-x86_64-gnu/lib/python3.13/asyncio/base_events.py\", line 725, in run_until_complete\n    return future.result()\n           ~~~~~~~~~~~~~^^\n  File \"/home/daclab-ai/.local/share/uv/tools/mcp-server-bigquery/lib/python3.13/site-packages/mcp_server_bigquery/server.py\", line 114, in main\n    db = BigQueryDatabase(project, location, key_file, datasets_filter)\n  File \"/home/daclab-ai/.local/share/uv/tools/mcp-server-bigquery/lib/python3.13/site-packages/mcp_server_bigquery/server.py\", line 34, in __init__\n    raise ValueError(\"Project is required\")\nValueError: Project is required\n",
+    "details": {
+      "stdout": "",
+      "stderr": "2025-09-11 23:23:09,232 - mcp_bigquery_server - INFO - Starting MCP BigQuery Server\n2025-09-11 23:23:09,232 - mcp_bigquery_server - INFO - Starting BigQuery MCP Server with project: None and location: None\n2025-09-11 23:23:09,233 - mcp_bigquery_server - INFO - Initializing BigQuery client for project: None, location: None, key_file: None\nTraceback (most recent call last):\n  File \"/home/daclab-ai/.local/share/uv/tools/mcp-server-bigquery/bin/mcp-server-bigquery\", line 10, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File \"/home/daclab-ai/.local/share/uv/tools/mcp-server-bigquery/lib/python3.13/site-packages/mcp_server_bigquery/__init__.py\", line 27, in main\n    asyncio.run(server.main(project, location, key_file, datasets_filter))\n    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/daclab-ai/.local/share/uv/python/cpython-3.13.7-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py\", line 195, in run\n    return runner.run(main)\n           ~~~~~~~~~~^^^^^^\n  File \"/home/daclab-ai/.local/share/uv/python/cpython-3.13.7-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py\", line 118, in run\n    return self._loop.run_until_complete(task)\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/daclab-ai/.local/share/uv/python/cpython-3.13.7-linux-x86_64-gnu/lib/python3.13/asyncio/base_events.py\", line 725, in run_until_complete\n    return future.result()\n           ~~~~~~~~~~~~~^^\n  File \"/home/daclab-ai/.local/share/uv/tools/mcp-server-bigquery/lib/python3.13/site-packages/mcp_server_bigquery/server.py\", line 114, in main\n    db = BigQueryDatabase(project, location, key_file, datasets_filter)\n  File \"/home/daclab-ai/.local/share/uv/tools/mcp-server-bigquery/lib/python3.13/site-packages/mcp_server_bigquery/server.py\", line 34, in __init__\n    raise ValueError(\"Project is required\")\nValueError: Project is required\n"
+    },
+    "dependencies": [
+      {
+        "type": "command",
+        "name": "uvx",
+        "available": true,
+        "required": true
+      },
+      {
+        "type": "env",
+        "name": "GOOGLE_APPLICATION_CREDENTIALS",
+        "available": true,
+        "required": true,
+        "secret": false
+      }
+    ]
+  },
+  {
+    "server": "mcp-jupyter",
+    "status": "success",
+    "capabilities": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {
+        "experimental": {},
+        "tools": {
+          "listChanged": false
+        }
+      },
+      "serverInfo": {
+        "name": "Jupyter notebook manager",
+        "version": "0.1.0"
+      }
+    },
+    "dependencies": [
+      {
+        "type": "command",
+        "name": "uvx",
+        "available": true,
+        "required": true
+      },
+      {
+        "type": "env",
+        "name": "JUPYTER_BASE_URL",
+        "available": true,
+        "required": true,
+        "secret": false
+      }
+    ]
+  },
+  {
+    "server": "mcp-redis",
+    "status": "failed",
+    "exitCode": 1,
+    "signal": null,
+    "error": "Traceback (most recent call last):\n  File \"/home/daclab-ai/.local/share/uv/tools/mcp-server-redis/lib/python3.13/site-packages/mcp_server_redis/server.py\", line 13, in <module>\n    settings = RedisSettings()\n  File \"/home/daclab-ai/.local/share/uv/tools/mcp-server-redis/lib/python3.13/site-packages/pydantic_settings/main.py\", line 188, in __init__\n    super().__init__(\n    ~~~~~~~~~~~~~~~~^\n        **__pydantic_self__._settings_build_values(\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    ...<27 lines>...\n        )\n        ^\n    )\n    ^\n  File \"/home/daclab-ai/.local/share/uv/tools/mcp-server-redis/lib/python3.13/site-packages/pydantic/main.py\", line 253, in __init__\n    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)\npydantic_core._pydantic_core.ValidationError: 4 validation errors for RedisSettings\nREDIS_HOST\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\nREDIS_PORT\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\nREDIS_DB\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\nREDIS_PASSWORD\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/home/daclab-ai/.local/share/uv/tools/mcp-server-redis/bin/mcp-server-redis\", line 4, in <module>\n    from mcp_server_redis import main\n  File \"/home/daclab-ai/.local/share/uv/tools/mcp-server-redis/lib/python3.13/site-packages/mcp_server_redis/__init__.py\", line 1, in <module>\n    from mcp_server_redis.server import mcp\n  File \"/home/daclab-ai/.local/share/uv/tools/mcp-server-redis/lib/python3.13/site-packages/mcp_server_redis/server.py\", line 15, in <module>\n    raise ValueError(f\"Failed to load Redis settings: {e}\")\nValueError: Failed to load Redis settings: 4 validation errors for RedisSettings\nREDIS_HOST\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\nREDIS_PORT\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\nREDIS_DB\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\nREDIS_PASSWORD\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\n",
+    "details": {
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/home/daclab-ai/.local/share/uv/tools/mcp-server-redis/lib/python3.13/site-packages/mcp_server_redis/server.py\", line 13, in <module>\n    settings = RedisSettings()\n  File \"/home/daclab-ai/.local/share/uv/tools/mcp-server-redis/lib/python3.13/site-packages/pydantic_settings/main.py\", line 188, in __init__\n    super().__init__(\n    ~~~~~~~~~~~~~~~~^\n        **__pydantic_self__._settings_build_values(\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    ...<27 lines>...\n        )\n        ^\n    )\n    ^\n  File \"/home/daclab-ai/.local/share/uv/tools/mcp-server-redis/lib/python3.13/site-packages/pydantic/main.py\", line 253, in __init__\n    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)\npydantic_core._pydantic_core.ValidationError: 4 validation errors for RedisSettings\nREDIS_HOST\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\nREDIS_PORT\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\nREDIS_DB\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\nREDIS_PASSWORD\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/home/daclab-ai/.local/share/uv/tools/mcp-server-redis/bin/mcp-server-redis\", line 4, in <module>\n    from mcp_server_redis import main\n  File \"/home/daclab-ai/.local/share/uv/tools/mcp-server-redis/lib/python3.13/site-packages/mcp_server_redis/__init__.py\", line 1, in <module>\n    from mcp_server_redis.server import mcp\n  File \"/home/daclab-ai/.local/share/uv/tools/mcp-server-redis/lib/python3.13/site-packages/mcp_server_redis/server.py\", line 15, in <module>\n    raise ValueError(f\"Failed to load Redis settings: {e}\")\nValueError: Failed to load Redis settings: 4 validation errors for RedisSettings\nREDIS_HOST\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\nREDIS_PORT\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\nREDIS_DB\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\nREDIS_PASSWORD\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\n"
+    },
+    "dependencies": [
+      {
+        "type": "command",
+        "name": "uvx",
+        "available": true,
+        "required": true
+      },
+      {
+        "type": "env",
+        "name": "REDIS_URL",
+        "available": true,
+        "required": true,
+        "secret": false
+      }
+    ]
+  },
+  {
+    "server": "mcp-rabbitmq",
+    "status": "failed",
+    "exitCode": 2,
+    "signal": null,
+    "error": "/home/daclab-ai/.local/share/uv/tools/mcp-server-rabbitmq/lib/python3.13/site-packages/fastmcp/server/auth/__init__.py:27: DeprecationWarning: The `fastmcp.server.auth.providers.bearer` module is deprecated and will be removed in a future version. Please use `fastmcp.server.auth.providers.jwt.JWTVerifier` instead of this module's BearerAuthProvider.\n  from .providers.bearer import BearerAuthProvider\nusage: mcp-server-rabbitmq [-h] --rabbitmq-host RABBITMQ_HOST --port PORT\n                           --username USERNAME --password PASSWORD\n                           [--use-tls USE_TLS] [--api-port API_PORT] [--http]\n                           [--server-port SERVER_PORT]\n                           [--http-auth-jwks-uri HTTP_AUTH_JWKS_URI]\n                           [--http-auth-issuer HTTP_AUTH_ISSUER]\n                           [--http-auth-audience HTTP_AUTH_AUDIENCE]\n                           [--http-auth-required-scopes [HTTP_AUTH_REQUIRED_SCOPES ...]]\nmcp-server-rabbitmq: error: the following arguments are required: --rabbitmq-host, --port, --username, --password\n",
+    "details": {
+      "stdout": "",
+      "stderr": "/home/daclab-ai/.local/share/uv/tools/mcp-server-rabbitmq/lib/python3.13/site-packages/fastmcp/server/auth/__init__.py:27: DeprecationWarning: The `fastmcp.server.auth.providers.bearer` module is deprecated and will be removed in a future version. Please use `fastmcp.server.auth.providers.jwt.JWTVerifier` instead of this module's BearerAuthProvider.\n  from .providers.bearer import BearerAuthProvider\nusage: mcp-server-rabbitmq [-h] --rabbitmq-host RABBITMQ_HOST --port PORT\n                           --username USERNAME --password PASSWORD\n                           [--use-tls USE_TLS] [--api-port API_PORT] [--http]\n                           [--server-port SERVER_PORT]\n                           [--http-auth-jwks-uri HTTP_AUTH_JWKS_URI]\n                           [--http-auth-issuer HTTP_AUTH_ISSUER]\n                           [--http-auth-audience HTTP_AUTH_AUDIENCE]\n                           [--http-auth-required-scopes [HTTP_AUTH_REQUIRED_SCOPES ...]]\nmcp-server-rabbitmq: error: the following arguments are required: --rabbitmq-host, --port, --username, --password\n"
+    },
+    "dependencies": [
+      {
+        "type": "command",
+        "name": "uvx",
+        "available": true,
+        "required": true
+      },
+      {
+        "type": "env",
+        "name": "RABBITMQ_URL",
+        "available": true,
+        "required": true,
+        "secret": false
+      }
+    ]
+  }
+]

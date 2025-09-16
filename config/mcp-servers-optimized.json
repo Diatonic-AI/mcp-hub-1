@@ -1,0 +1,117 @@
+{
+  "hub": {
+    "metaOnly": true,
+    "lazyLoad": true
+  },
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/home/daclab-ai",
+        "/tmp",
+        "/etc",
+        "/opt",
+        "/usr",
+        "/var"
+      ],
+      "description": "File system operations"
+    },
+    "mcp-everything": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-everything"
+      ],
+      "description": "Everything server - testing server with all capabilities"
+    },
+    "mcp-fetch": {
+      "command": "uv",
+      "args": [
+        "tool",
+        "run",
+        "mcp-server-fetch"
+      ],
+      "description": "HTTP/HTTPS fetching capabilities"
+    },
+    "mcp-git": {
+      "command": "uv",
+      "args": [
+        "tool",
+        "run",
+        "mcp-server-git"
+      ],
+      "description": "Git repository operations"
+    },
+    "mcp-memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ],
+      "description": "Knowledge graph memory system"
+    },
+    "mcp-sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
+      "description": "Step-by-step reasoning"
+    },
+    "mcp-time": {
+      "command": "uv",
+      "args": [
+        "tool",
+        "run",
+        "mcp-server-time",
+        "--local-timezone",
+        "UTC"
+      ],
+      "env": {
+        "TZ": "UTC"
+      },
+      "description": "Time and date operations"
+    },
+    "mcp-google-maps": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-google-maps"
+      ],
+      "env": {
+        "GOOGLE_MAPS_API_KEY": "YOUR_GOOGLE_MAPS_API_KEY"
+      },
+      "description": "Google Maps operations"
+    },
+    "mcp-postgres": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://mcp_hub_app:mcp_hub_secure_password@10.10.10.11:5432/mcp_hub"
+      ],
+      "description": "PostgreSQL database operations"
+    },
+    "mcp-puppeteer": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-puppeteer"
+      ],
+      "description": "Browser automation"
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "YOUR_GITHUB_TOKEN"
+      },
+      "description": "GitHub repository operations"
+    }
+  }
+}

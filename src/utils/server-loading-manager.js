@@ -38,7 +38,9 @@ export class ServerLoadingManager extends EventEmitter {
       // Delay between loading servers in batch mode (2 seconds)
       batchLoadDelayMs: 2 * 1000,
       // Persistent registry file path
-      persistentRegistryPath: '/app/data/tool-registry.json',
+      persistentRegistryPath: process.env.DATA_DIR 
+        ? path.join(process.env.DATA_DIR, 'tool-registry.json')
+        : path.join(process.env.HOME, '.local', 'share', 'mcp-hub', 'data', 'tool-registry.json'),
       // Enable persistent registry
       enablePersistence: true,
       ...options

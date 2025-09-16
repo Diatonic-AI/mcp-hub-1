@@ -1,4 +1,5 @@
 import express from "express";
+import cookieParser from "cookie-parser";
 import logger from "./utils/logger.js";
 import { MCPHub } from "./MCPHub.js";
 import { SSEManager, EventTypes, HubState, SubscriptionTypes } from "./utils/sse-manager.js";
@@ -17,12 +18,24 @@ import { getMarketplace } from "./marketplace.js";
 import { MCPServerEndpoint } from "./mcp/server.js";
 import { WorkspaceCacheManager } from "./utils/workspace-cache.js";
 import { toolIndex } from "./utils/tool-index.js";
+import { initializeAuth, setupAuthRoutes, createAuthStatusMiddleware, shutdownAuth } from "./auth/index.js";
+import { analyticsService } from "./telemetry/analytics-service.js";
+import { telemetryManager } from "./telemetry/index.js";
+import { v4 as uuidv4 } from 'uuid';
+import { PostgreSQLManager } from "./utils/postgresql-manager.js";
+import { normalizePort, getAllPorts } from './utils/config-helper.js';
 
 const SERVER_ID = "mcp-hub";
+// Generate or retrieve a stable hub instance ID
+if (!process.env.HUB_INSTANCE_ID) {
+  process.env.HUB_INSTANCE_ID = uuidv4();
+  logger.info(`Generated new hub instance ID: ${process.env.HUB_INSTANCE_ID}`);
+}
 
 // Create Express app
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 app.use("/api", router);
 
 // Helper to determine HTTP status code from error type
@@ -39,11 +52,13 @@ function getStatusCode(error) {
 let serviceManager = null;
 let marketplace = null;
 let mcpServerEndpoint = null;
+let authServices = null;
 
 class ServiceManager {
   constructor(options = {}) {
     this.config = options.config;
-    this.port = options.port;
+    // Normalize port configuration to handle arrays or single values
+    this.port = normalizePort(options.port);
     this.host = options.host || 'localhost';
     this.autoShutdown = options.autoShutdown;
     this.shutdownDelay = options.shutdownDelay;
@@ -51,6 +66,8 @@ class ServiceManager {
     this.hubServerUrl = options.hubServerUrl;
     this.mcpHub = null;
     this.server = null;
+    this.db = options.db; // Database connection for auth
+    this.authConfig = options.auth || {}; // Authentication configuration
     this.workspaceCache = new WorkspaceCacheManager(options);
     this.sseManager = new SSEManager({
       ...options,
@@ -102,11 +119,43 @@ class ServiceManager {
   }
 
   async initializeMCPHub() {
-    // Initialize workspace cache first
+    // Initialize authentication system first if database is available
+    if (this.db) {
+      try {
+        logger.info("Initializing authentication system");
+        authServices = await initializeAuth({
+          db: this.db,
+          config: this.authConfig
+        });
+        
+        // Setup authentication routes
+        setupAuthRoutes(app, authServices);
+        
+        // Add auth status middleware globally
+        app.use(createAuthStatusMiddleware(authServices));
+        
+        logger.info("Authentication system initialized successfully");
+      } catch (error) {
+        logger.warn("Authentication system initialization failed, continuing without auth", {
+          error: error.message
+        });
+      }
+    } else {
+      logger.info("No database connection provided - authentication disabled");
+    }
+
+    // Initialize workspace cache
     logger.info("Initializing workspace cache");
     await this.workspaceCache.initialize();
     await this.workspaceCache.register(this.port, this.config);
     await this.workspaceCache.startWatching();
+    
+    // Initialize telemetry system (non-blocking)
+    telemetryManager.initialize().catch(error => {
+      logger.warn("Telemetry initialization failed, continuing without telemetry", {
+        error: error.message
+      });
+    });
 
     // Setup workspace cache event handlers
     this.workspaceCache.on('workspacesUpdated', (workspaces) => {
@@ -319,6 +368,16 @@ class ServiceManager {
         mcpServerEndpoint = null;
       } catch (error) {
         logger.debug(`Error closing MCP server endpoint: ${error.message}`);
+      }
+    }
+
+    // Shutdown authentication services
+    if (authServices) {
+      try {
+        await shutdownAuth(authServices);
+        authServices = null;
+      } catch (error) {
+        logger.debug(`Error shutting down authentication: ${error.message}`);
       }
     }
 
@@ -815,7 +874,13 @@ registerRoute("GET", "/health", "Check server health", async (req, res) => {
     activeClients: serviceManager?.sseManager?.connections.size || 0,
     timestamp: new Date().toISOString(),
     servers: serviceManager?.mcpHub?.getAllServerStatuses() || [],
-    connections: serviceManager?.sseManager?.getStats() || { totalConnections: 0, connections: [] }
+    connections: serviceManager?.sseManager?.getStats() || { totalConnections: 0, connections: [] },
+    authentication: {
+      enabled: !!authServices,
+      hasJWT: !!(authServices?.jwtService),
+      hasOAuth: !!(authServices?.oauthService),
+      oauthProviders: authServices?.oauthService?.getAvailableProviders() || []
+    }
   };
 
   // Add MCP endpoint stats if available
@@ -852,12 +917,159 @@ registerRoute(
   "GET",
   "/servers",
   "List all MCP servers and their status",
-  (req, res) => {
-    const servers = serviceManager.mcpHub.getAllServerStatuses();
-    res.json({
-      servers,
-      timestamp: new Date().toISOString(),
-    });
+  async (req, res) => {
+    try {
+      // Try to get data from PostgreSQL if available
+      const pgManager = PostgreSQLManager.getInstance();
+      if (pgManager && pgManager.isInitialized()) {
+        const dbServers = await pgManager.query(`
+          SELECT 
+            s.name,
+            s.display_name,
+            s.endpoint,
+            s.transport_type,
+            CASE 
+              WHEN s.connection_state = 'CONNECTED' THEN 'connected'
+              ELSE 'disconnected'
+            END as status,
+            s.tools_count,
+            s.resources_count,
+            s.prompts_count,
+            s.last_connected,
+            s.metadata,
+            array_agg(
+              json_build_object(
+                'name', t.original_name,
+                'namespaced_name', t.namespaced_name,
+                'description', t.description
+              ) ORDER BY t.name
+            ) FILTER (WHERE t.id IS NOT NULL) as tools
+          FROM mcp_servers s
+          LEFT JOIN mcp_tools t ON s.id = t.server_id
+          GROUP BY s.id, s.name, s.display_name, s.endpoint, s.transport_type, 
+                   s.connection_state, s.tools_count, s.resources_count, 
+                   s.prompts_count, s.last_connected, s.metadata
+          ORDER BY s.name
+        `);
+        
+        // Transform database results to match expected format
+        const servers = dbServers.rows.map(row => ({
+          name: row.name,
+          displayName: row.display_name,
+          endpoint: row.endpoint,
+          transportType: row.transport_type,
+          status: row.status,
+          toolCount: row.tools_count,
+          resourceCount: row.resources_count,
+          promptCount: row.prompts_count,
+          lastConnected: row.last_connected,
+          metadata: row.metadata,
+          tools: row.tools || []
+        }));
+        
+        res.json({
+          servers,
+          source: 'database',
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        // Fallback to in-memory data
+        const servers = serviceManager.mcpHub.getAllServerStatuses();
+        res.json({
+          servers,
+          source: 'memory',
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      logger.error('Failed to get servers list', { error: error.message });
+      // Fallback to in-memory data on error
+      const servers = serviceManager.mcpHub.getAllServerStatuses();
+      res.json({
+        servers,
+        source: 'memory',
+        error: error.message,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+);
+
+// Register tools list endpoint
+registerRoute(
+  "GET",
+  "/tools",
+  "List all MCP tools",
+  async (req, res) => {
+    try {
+      // Try to get data from PostgreSQL if available
+      const pgManager = PostgreSQLManager.getInstance();
+      if (pgManager && pgManager.isInitialized()) {
+        const dbTools = await pgManager.query(`
+          SELECT 
+            t.namespaced_name as tool_id,
+            t.name,
+            t.original_name,
+            t.description,
+            t.input_schema,
+            t.category,
+            t.metadata,
+            s.name as server_name,
+            s.display_name as server_display_name,
+            s.endpoint as server_endpoint,
+            s.transport_type as server_transport,
+            s.connection_state as server_status
+          FROM mcp_tools t
+          INNER JOIN mcp_servers s ON t.server_id = s.id
+          ORDER BY s.name, t.name
+        `);
+        
+        // Transform database results to match expected format
+        const tools = dbTools.rows.map(row => ({
+          toolId: row.tool_id,
+          name: row.name,
+          originalName: row.original_name,
+          description: row.description,
+          inputSchema: row.input_schema,
+          category: row.category,
+          metadata: row.metadata,
+          server: {
+            name: row.server_name,
+            displayName: row.server_display_name,
+            endpoint: row.server_endpoint,
+            transport: row.server_transport,
+            status: row.server_status
+          }
+        }));
+        
+        res.json({
+          tools,
+          count: tools.length,
+          source: 'database',
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        // Fallback to in-memory tool index
+        const tools = Array.from(toolIndex.getAll().values());
+        res.json({
+          tools,
+          count: tools.length,
+          source: 'memory',
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      logger.error('Failed to get tools list', { error: error.message });
+      // Fallback to in-memory data on error
+      const tools = Array.from(toolIndex.getAll().values());
+      res.json({
+        tools,
+        count: tools.length,
+        source: 'memory',
+        error: error.message,
+        timestamp: new Date().toISOString(),
+      });
+    }
   }
 );
 
@@ -1311,6 +1523,223 @@ registerRoute(
 );
 
 
+
+// =============================================================================
+// TELEMETRY ANALYTICS API ENDPOINTS
+// =============================================================================
+
+// Get telemetry metrics
+registerRoute(
+  "GET",
+  "/api/analytics/metrics",
+  "Get aggregated telemetry metrics",
+  async (req, res) => {
+    try {
+      const { server, tool, bucket, startTime, endTime, tenant, limit } = req.query;
+      const metrics = await analyticsService.getMetrics({
+        server,
+        tool,
+        bucket,
+        startTime,
+        endTime,
+        tenant,
+        limit: limit ? parseInt(limit) : undefined
+      });
+      res.json({
+        status: "ok",
+        ...metrics,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      throw wrapError(error, "ANALYTICS_METRICS_ERROR", { query: req.query });
+    }
+  }
+);
+
+// Get pattern analysis
+registerRoute(
+  "GET",
+  "/api/analytics/patterns",
+  "Get tool usage patterns and sequences",
+  async (req, res) => {
+    try {
+      const { server, tool, tenant, limit, minSupport } = req.query;
+      const patterns = await analyticsService.getPatterns({
+        server,
+        tool,
+        tenant,
+        limit: limit ? parseInt(limit) : undefined,
+        minSupport: minSupport ? parseFloat(minSupport) : undefined
+      });
+      res.json({
+        status: "ok",
+        ...patterns,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      throw wrapError(error, "ANALYTICS_PATTERNS_ERROR", { query: req.query });
+    }
+  }
+);
+
+// Get anomalies
+registerRoute(
+  "GET",
+  "/api/analytics/anomalies",
+  "Get detected anomalies in telemetry data",
+  async (req, res) => {
+    try {
+      const { since, severity, type, tenant, limit } = req.query;
+      const anomalies = await analyticsService.getAnomalies({
+        since,
+        severity,
+        type,
+        tenant,
+        limit: limit ? parseInt(limit) : undefined
+      });
+      res.json({
+        status: "ok",
+        ...anomalies,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      throw wrapError(error, "ANALYTICS_ANOMALIES_ERROR", { query: req.query });
+    }
+  }
+);
+
+// Semantic search
+registerRoute(
+  "GET",
+  "/api/analytics/search",
+  "Semantic search across telemetry data",
+  async (req, res) => {
+    try {
+      const { text, vector, topK, scope, server, tool, tenant } = req.query;
+      if (!text) {
+        throw new ValidationError("Missing search text", { field: "text" });
+      }
+      const results = await analyticsService.semanticSearch({
+        text,
+        vector,
+        topK: topK ? parseInt(topK) : undefined,
+        scope,
+        server,
+        tool,
+        tenant
+      });
+      res.json({
+        status: "ok",
+        ...results,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      throw wrapError(error, "ANALYTICS_SEARCH_ERROR", { query: req.query });
+    }
+  }
+);
+
+// Get similar events
+registerRoute(
+  "GET",
+  "/api/analytics/similar/:eventId",
+  "Find events similar to a given event",
+  async (req, res) => {
+    try {
+      const { eventId } = req.params;
+      if (!eventId) {
+        throw new ValidationError("Missing event ID", { field: "eventId" });
+      }
+      const similar = await analyticsService.getSimilarEvents(eventId);
+      res.json({
+        status: "ok",
+        ...similar,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      throw wrapError(error, "ANALYTICS_SIMILAR_ERROR", { eventId: req.params.eventId });
+    }
+  }
+);
+
+// Get analytics health
+registerRoute(
+  "GET",
+  "/api/analytics/health",
+  "Get health status of analytics components",
+  async (req, res) => {
+    try {
+      const health = await analyticsService.getHealth();
+      res.json({
+        status: "ok",
+        ...health,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      throw wrapError(error, "ANALYTICS_HEALTH_ERROR");
+    }
+  }
+);
+
+// Get analytics summary
+registerRoute(
+  "GET",
+  "/api/analytics/summary",
+  "Get summary statistics for telemetry data",
+  async (req, res) => {
+    try {
+      const { tenant } = req.query;
+      const summary = await analyticsService.getSummary(tenant);
+      res.json({
+        status: "ok",
+        ...summary,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      throw wrapError(error, "ANALYTICS_SUMMARY_ERROR", { tenant: req.query.tenant });
+    }
+  }
+);
+
+// SSE endpoint for telemetry events
+registerRoute(
+  "GET",
+  "/api/telemetry/stream",
+  "Subscribe to real-time telemetry events",
+  async (req, res) => {
+    try {
+      // Set SSE headers
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*'
+      });
+
+      // Send initial connection message
+      res.write(`data: ${JSON.stringify({ type: 'connected', timestamp: new Date().toISOString() })}\n\n`);
+
+      // Create listener for telemetry events (would need to implement this in telemetry module)
+      // For now, just keep connection alive
+      const heartbeat = setInterval(() => {
+        res.write(`:heartbeat\n\n`);
+      }, 30000);
+
+      // Clean up on client disconnect
+      req.on('close', () => {
+        clearInterval(heartbeat);
+        res.end();
+      });
+    } catch (error) {
+      logger.error('TELEMETRY_STREAM_ERROR', 'Failed to setup telemetry stream', {
+        error: error.message
+      });
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Failed to setup telemetry stream' });
+      }
+    }
+  }
+);
 
 // Error handler middleware
 router.use((err, req, res, next) => {
