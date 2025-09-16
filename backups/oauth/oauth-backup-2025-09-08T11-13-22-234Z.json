@@ -1,0 +1,28 @@
+{
+  "https://mcp.wix.com/mcp": {
+    "clientInfo": {
+      "redirect_uris": [
+        "http://localhost:3001/api/oauth/callback?server_name=wix-mcp-remote"
+      ],
+      "token_endpoint_auth_method": "none",
+      "grant_types": [
+        "authorization_code",
+        "refresh_token"
+      ],
+      "response_types": [
+        "code"
+      ],
+      "client_name": "MCP Hub",
+      "client_uri": "https://github.com/ravitemer/mcp-hub",
+      "client_id": "JZB0gYjyZdmYMsRI",
+      "client_id_issued_at": 1756907397
+    },
+    "tokens": null,
+    "codeVerifier": "FKAL2W__45DbJhvZMjezno79kj_2gMwiDtM73Aq4.5c"
+  },
+  "http://google-workspace-mcp:8000/mcp": {
+    "clientInfo": null,
+    "tokens": null,
+    "codeVerifier": null
+  }
+}

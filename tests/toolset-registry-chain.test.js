@@ -95,7 +95,10 @@ describe('Advanced Tool Chaining', () => {
               contents: "processed data"
             }
           }
-        ]
+        ],
+        execution_options: {
+          approval_granted: true  // Required for write operations
+        }
       };
 
       const result = await registry.chainTools(chain);
@@ -166,7 +169,10 @@ describe('Advanced Tool Chaining', () => {
             tool_name: "write_file",
             arguments: { path: "/recovery.txt", contents: "recovered" }
           }
-        ]
+        ],
+        execution_options: {
+          approval_granted: true  // Required for write operations
+        }
       };
 
       const result = await registry.chainTools(chain);
@@ -280,7 +286,10 @@ describe('Advanced Tool Chaining', () => {
               contents: "Report by {{VARS.author}} at {{VARS.timestamp}}"
             }
           }
-        ]
+        ],
+        execution_options: {
+          approval_granted: true  // Required for write operations
+        }
       };
 
       await registry.chainTools(chain);
@@ -374,11 +383,9 @@ describe('Advanced Tool Chaining', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty chain', async () => {
-      const result = await registry.chainTools({ chain: [] });
-
-      expect(result.content[0].text).toContain("Empty chain");
-      expect(result.isError).toBe(false);
-      expect(result.chainResults).toHaveLength(0);
+      await expect(registry.chainTools({ chain: [] })).rejects.toThrow(
+        "Chain specification validation failed: Chain cannot be empty"
+      );
     });
 
     it('should validate chain structure', async () => {

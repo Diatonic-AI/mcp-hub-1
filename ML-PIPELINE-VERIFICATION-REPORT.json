@@ -1,0 +1,144 @@
+{
+  "components": [
+    {
+      "name": "PostgreSQL Connection",
+      "passed": true,
+      "details": "Connected successfully. Server time: Tue Sep 16 2025 12:43:48 GMT-0500 (Central Daylight Time)"
+    },
+    {
+      "name": "MongoDB Connection",
+      "passed": true,
+      "details": "Connected. Collections: 21"
+    },
+    {
+      "name": "Redis Connection",
+      "passed": true,
+      "details": "Connected. Redis is responsive"
+    },
+    {
+      "name": "postgresql-manager.js",
+      "passed": true,
+      "details": "Size: 27186 bytes"
+    },
+    {
+      "name": "enhanced-db-adapter.js",
+      "passed": true,
+      "details": "Size: 10030 bytes"
+    },
+    {
+      "name": "model-registry.js",
+      "passed": false,
+      "details": "File not found"
+    },
+    {
+      "name": "training-orchestrator.js",
+      "passed": false,
+      "details": "File not found"
+    },
+    {
+      "name": "ml-telemetry-enhanced-metrics.js",
+      "passed": true,
+      "details": "Size: 31828 bytes"
+    },
+    {
+      "name": "training-orchestrator-worker.js",
+      "passed": false,
+      "details": "File not found"
+    },
+    {
+      "name": "telemetry-pipeline-worker.js",
+      "passed": false,
+      "details": "File not found"
+    }
+  ],
+  "migrations": [
+    {
+      "name": "Migration System",
+      "passed": false,
+      "details": "relation \"mcp_hub.migrations\" does not exist"
+    }
+  ],
+  "apis": [
+    {
+      "name": "Health Check",
+      "passed": false,
+      "details": "Status: 404"
+    },
+    {
+      "name": "List Servers",
+      "passed": true,
+      "details": "Status: 200"
+    },
+    {
+      "name": "List Tools",
+      "passed": false,
+      "details": "Status: 404"
+    },
+    {
+      "name": "ML Models",
+      "passed": false,
+      "details": "Status: 404"
+    },
+    {
+      "name": "Training Status",
+      "passed": false,
+      "details": "Status: 404"
+    },
+    {
+      "name": "Telemetry Metrics",
+      "passed": false,
+      "details": "Status: 404"
+    }
+  ],
+  "workers": [
+    {
+      "name": "start-telemetry-worker.js",
+      "passed": true,
+      "details": "Valid worker file"
+    },
+    {
+      "name": "training-orchestrator-worker.js",
+      "passed": false,
+      "details": "File not found"
+    },
+    {
+      "name": "telemetry-pipeline-worker.js",
+      "passed": false,
+      "details": "File not found"
+    }
+  ],
+  "servers": [
+    {
+      "name": "Configuration",
+      "passed": true,
+      "details": "7 servers configured"
+    },
+    {
+      "name": "PostgreSQL Integration",
+      "passed": true,
+      "details": "Enabled"
+    },
+    {
+      "name": "Diagnostic Report",
+      "passed": false,
+      "details": "Not found - Run diagnostic"
+    }
+  ],
+  "issues": [
+    "migrations: Migration System - relation \"mcp_hub.migrations\" does not exist",
+    "components: model-registry.js - File not found",
+    "components: training-orchestrator.js - File not found",
+    "components: training-orchestrator-worker.js - File not found",
+    "components: telemetry-pipeline-worker.js - File not found",
+    "apis: Health Check - Status: 404",
+    "apis: List Tools - Status: 404",
+    "apis: ML Models - Status: 404",
+    "apis: Training Status - Status: 404",
+    "apis: Telemetry Metrics - Status: 404",
+    "workers: training-orchestrator-worker.js - File not found",
+    "workers: telemetry-pipeline-worker.js - File not found",
+    "servers: Diagnostic Report - Not found - Run diagnostic"
+  ],
+  "passed": 10,
+  "failed": 13
+}

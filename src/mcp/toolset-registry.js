@@ -18,6 +18,8 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import logger from "../utils/logger.js";
 import { toolIndex } from "../utils/tool-index.js";
+import { validateChainSpec, CHAIN_SECURITY_LIMITS } from "../utils/chain-spec-validator.js";
+import { telemetryIngestor } from '../telemetry/index.js';
 
 /**
  * Hub meta-tool definitions that will be registered as MCP tools
@@ -262,9 +264,108 @@ export const HUB_TOOLS = {
       required: ["chain"]
     }
   },
-  // Note: intentionally not exposing a generic CALL_API hub tool in the
-  // HUB_TOOLS list to keep the exported toolset stable for unit tests.
+  
+  // MLOps Feature Engineering Tools
+  MLOPS_REGISTER_FEATURE_SET: {
+    name: "mlops__register_feature_set",
+    description: "Register a new feature set with versioning and lineage tracking",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tenant: {
+          type: "string",
+          description: "Tenant identifier for multi-tenancy"
+        },
+        spec: {
+          type: "object",
+          description: "Feature set specification (YAML/JSON) with name, features, source, etc.",
+          properties: {
+            name: { type: "string" },
+            description: { type: "string" },
+            source: { type: "string" },
+            features: { 
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  type: { type: "string" },
+                  column: { type: "string" },
+                  aggregation: { type: "string" },
+                  window: { type: "string" }
+                }
+              }
+            }
+          },
+          required: ["name", "features", "source"]
+        },
+        owner: {
+          type: "string",
+          description: "Owner of the feature set"
+        }
+      },
+      required: ["tenant", "spec", "owner"]
+    }
+  },
+  
+  MLOPS_MATERIALIZE_FEATURES: {
+    name: "mlops__materialize_features",
+    description: "Materialize features offline or online for a feature set",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tenant: {
+          type: "string",
+          description: "Tenant identifier"
+        },
+        name: {
+          type: "string",
+          description: "Feature set name"
+        },
+        version: {
+          type: "integer",
+          description: "Feature set version"
+        },
+        mode: {
+          type: "string",
+          enum: ["offline", "online", "both"],
+          default: "offline",
+          description: "Materialization mode"
+        }
+      },
+      required: ["tenant", "name", "version"]
+    }
+  },
+  
+  MLOPS_GET_FEATURE_VECTOR: {
+    name: "mlops__get_feature_vector",
+    description: "Get feature vector for an entity from cache or compute on-demand",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tenant: {
+          type: "string",
+          description: "Tenant identifier"
+        },
+        name: {
+          type: "string",
+          description: "Feature set name"
+        },
+        version: {
+          type: "integer",
+          description: "Feature set version"
+        },
+        entity_id: {
+          type: "string",
+          description: "Entity ID to get features for"
+        }
+      },
+      required: ["tenant", "name", "version", "entity_id"]
+    }
+  }
 };
+// Note: intentionally not exposing a generic CALL_API hub tool in the
+// HUB_TOOLS list to keep the exported toolset stable for unit tests.
 
 /**
  * ToolsetRegistry provides centralized tool discovery and management
@@ -646,9 +747,40 @@ export class ToolsetRegistry {
    * Execute a tool on a specific server
    */
   async callTool(serverName, toolName, args = {}) {
+    // Capture telemetry start event
+    const telemetryContext = {
+      server: serverName,
+      tool: toolName,
+      tenant: process.env.TENANT || 'default',
+      userAgent: 'mcp-hub',
+      args: args
+    };
+    const eventId = telemetryIngestor.captureToolStart(telemetryContext);
+    const startTime = Date.now();
+
     try {
-      return await this.mcpHub.callTool(serverName, toolName, args);
+      const result = await this.mcpHub.callTool(serverName, toolName, args);
+      
+      // Capture telemetry success
+      telemetryIngestor.captureToolComplete(eventId, {
+        ...telemetryContext,
+        latency: Date.now() - startTime,
+        output: result
+      });
+      
+      return result;
     } catch (error) {
+      // Capture telemetry error
+      telemetryIngestor.captureToolComplete(eventId, {
+        ...telemetryContext,
+        latency: Date.now() - startTime,
+        error: { 
+          code: error.code || ErrorCode.InternalError,
+          message: error.message,
+          stack: error.stack
+        }
+      });
+      
       throw new McpError(
         ErrorCode.InternalError, 
         `Failed to execute tool ${toolName} on server ${serverName}: ${error.message}`
@@ -657,75 +789,225 @@ export class ToolsetRegistry {
   }
 
   /**
-   * Advanced tool chaining with data transformations, conditional execution, and parallel processing
+   * Advanced tool chaining with comprehensive security hardening, validation, and monitoring
    */
   async chainTools(config) {
-    const { 
-      chain, 
-      variables = {}, 
-      execution_options = {} 
-    } = config;
+    const executionId = this._generateExecutionId();
+    const startTime = Date.now();
     
-    const options = {
-      timeout_ms: execution_options.timeout_ms || 300000,
-      fail_fast: execution_options.fail_fast !== false,
-      max_parallel: execution_options.max_parallel || 5,
-      rollback_on_error: execution_options.rollback_on_error || false,
-      ...execution_options
-    };
-
-    if (!Array.isArray(chain)) {
-      throw new McpError(ErrorCode.InvalidParams, 'chain must be an array of tool call descriptors');
-    }
-
-    if (chain.length === 0) {
-      return {
-        content: [{
-          type: "text",
-          text: "Empty chain provided. No tools to execute."
-        }],
-        isError: false,
-        chainResults: []
-      };
-    }
-
-    // Set up execution context
-    const context = {
-      variables: { ...variables },
-      stepResults: new Map(), // id -> result
-      executionLog: [],
-      startTime: Date.now(),
-      rollbackActions: []
-    };
-
-    // Add timeout wrapper
-    const executeWithTimeout = async () => {
-      return await this._executeChainWithAdvancedFeatures(chain, context, options);
-    };
-
     try {
-      // Execute with global timeout
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error(`Chain execution timeout after ${options.timeout_ms}ms`)), options.timeout_ms);
+      // Phase 1: Security validation and hardening
+      logger.info('Chain execution started', { 
+        executionId, 
+        stepCount: config.chain?.length || 0,
+        hasVariables: !!config.variables,
+        hasExecutionOptions: !!config.execution_options
       });
-
-      return await Promise.race([executeWithTimeout(), timeoutPromise]);
-    } catch (error) {
-      // Attempt rollback if enabled
-      if (options.rollback_on_error && context.rollbackActions.length > 0) {
-        await this._executeRollback(context.rollbackActions);
+      
+      const validationResult = await validateChainSpec(config, {
+        executionId,
+        strictMode: true,
+        requireApprovalForWrites: true
+      });
+      
+      if (!validationResult.isValid) {
+        throw new McpError(
+          ErrorCode.InvalidParams, 
+          'Chain specification validation failed',
+          { validationId: validationResult.validationId }
+        );
       }
       
-      throw new McpError(
-        ErrorCode.InternalError,
-        `Chain execution failed: ${error.message}`,
-        { 
-          context: context.executionLog,
+      // Use the hardened specification
+      const { hardenedSpec, securityMetadata } = validationResult;
+      const { chain, variables = {}, execution_options = {} } = hardenedSpec;
+      
+      // Log security warnings if any
+      if (validationResult.warnings?.length > 0) {
+        logger.warn('Chain security warnings', {
+          executionId,
+          warnings: validationResult.warnings,
+          riskLevel: securityMetadata.riskLevel
+        });
+      }
+      
+      // Phase 2: Set up execution options with security limits
+      const options = {
+        timeout_ms: Math.min(
+          execution_options.timeout_ms || 300000,
+          CHAIN_SECURITY_LIMITS.MAX_EXECUTION_TIME_MS
+        ),
+        fail_fast: execution_options.fail_fast !== false,
+        max_parallel: Math.min(
+          execution_options.max_parallel || 5,
+          CHAIN_SECURITY_LIMITS.MAX_PARALLEL_STEPS
+        ),
+        rollback_on_error: execution_options.rollback_on_error || false,
+        dry_run: execution_options.dry_run || false,
+        audit_level: execution_options.audit_level || 'standard',
+        ...execution_options
+      };
+      
+      // Phase 3: Check for write operation approval if required
+      if (securityMetadata.approvalRequired && !execution_options.approval_granted) {
+        return {
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              approval_required: true,
+              write_operations: securityMetadata.writeOperations,
+              risk_level: securityMetadata.riskLevel,
+              execution_id: executionId,
+              message: "This chain contains write operations that require explicit approval. Please review and set approval_granted: true in execution_options to proceed."
+            }, null, 2)
+          }],
+          isError: false,
+          requiresApproval: true,
+          executionId,
+          securityMetadata
+        };
+      }
+      
+      // Handle empty chain after validation
+      if (chain.length === 0) {
+        logger.info('Empty chain execution completed', { executionId });
+        return {
+          content: [{
+            type: "text",
+            text: "Empty chain provided. No tools to execute."
+          }],
+          isError: false,
+          chainResults: [],
+          executionId
+        };
+      }
+
+      // Phase 4: Set up secure execution context with monitoring
+      const context = {
+        executionId,
+        variables: { ...variables },
+        stepResults: new Map(), // id -> result
+        executionLog: [],
+        startTime: Date.now(),
+        rollbackActions: [],
+        securityMetadata,
+        resourceUsage: {
+          memoryUsed: 0,
+          executionTime: 0,
+          toolCallsCount: 0
+        },
+        limits: hardenedSpec._limits
+      };
+      
+      // Add execution monitoring
+      const monitoringInterval = setInterval(() => {
+        const memUsage = process.memoryUsage();
+        context.resourceUsage.memoryUsed = memUsage.heapUsed;
+        context.resourceUsage.executionTime = Date.now() - startTime;
+        
+        // Log resource usage at intervals for long-running chains
+        if (context.resourceUsage.executionTime > 30000) { // 30 seconds
+          logger.debug('Chain execution progress', {
+            executionId,
+            elapsedMs: context.resourceUsage.executionTime,
+            memoryMB: Math.round(context.resourceUsage.memoryUsed / 1024 / 1024),
+            completedSteps: context.stepResults.size,
+            totalSteps: chain.length
+          });
+        }
+      }, 5000); // Monitor every 5 seconds
+
+      // Phase 5: Execute chain with comprehensive error handling
+      try {
+        const executeWithTimeout = async () => {
+          return await this._executeChainWithAdvancedFeatures(chain, context, options);
+        };
+        
+        // Execute with global timeout and resource monitoring
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => {
+            clearInterval(monitoringInterval);
+            reject(new Error(`Chain execution timeout after ${options.timeout_ms}ms`));
+          }, options.timeout_ms);
+        });
+
+        const result = await Promise.race([executeWithTimeout(), timeoutPromise]);
+        
+        // Clear monitoring interval
+        clearInterval(monitoringInterval);
+        
+        // Add execution metadata to result
+        result.executionMetadata = {
+          executionId,
+          totalDuration: Date.now() - startTime,
+          resourceUsage: context.resourceUsage,
+          securityLevel: securityMetadata.riskLevel,
+          validationId: validationResult.validationId
+        };
+        
+        logger.info('Chain execution completed successfully', {
+          executionId,
           totalSteps: chain.length,
           executedSteps: context.stepResults.size,
-          elapsed: Date.now() - context.startTime
+          durationMs: Date.now() - startTime,
+          riskLevel: securityMetadata.riskLevel
+        });
+        
+        return result;
+        
+      } catch (error) {
+        // Clear monitoring interval
+        clearInterval(monitoringInterval);
+        
+        // Log execution failure
+        logger.error('Chain execution failed', {
+          executionId,
+          error: error.message,
+          totalSteps: chain.length,
+          executedSteps: context.stepResults.size,
+          durationMs: Date.now() - startTime,
+          riskLevel: securityMetadata.riskLevel
+        });
+        
+        // Attempt rollback if enabled
+        if (options.rollback_on_error && context.rollbackActions.length > 0) {
+          try {
+            logger.info('Attempting chain rollback', { executionId });
+            await this._executeRollback(context.rollbackActions, executionId);
+            logger.info('Chain rollback completed', { executionId });
+          } catch (rollbackError) {
+            logger.error('Chain rollback failed', {
+              executionId,
+              rollbackError: rollbackError.message
+            });
+          }
         }
-      );
+        
+        throw new McpError(
+          ErrorCode.InternalError,
+          `Chain execution failed: ${error.message}`,
+          { 
+            executionId,
+            validationId: validationResult.validationId,
+            context: context.executionLog,
+            totalSteps: chain.length,
+            executedSteps: context.stepResults.size,
+            elapsed: Date.now() - startTime,
+            resourceUsage: context.resourceUsage,
+            securityLevel: securityMetadata.riskLevel
+          }
+        );
+      }
+      
+    } catch (error) {
+      // Handle validation or setup errors
+      logger.error('Chain execution setup failed', {
+        executionId,
+        error: error.message,
+        durationMs: Date.now() - startTime
+      });
+      
+      throw error;
     }
   }
 
@@ -1335,6 +1617,135 @@ export class ToolsetRegistry {
   }
 
   /**
+   * Execute MLOps tool handlers
+   */
+  async executeMLOpsTool(toolType, args) {
+    // Import feature registry service dynamically
+    const { default: featureRegistry } = await import('../../ml-pipeline/src/feature_engineering/registry.js');
+    
+    try {
+      switch (toolType) {
+        case 'register_feature_set': {
+          const result = await featureRegistry.registerFeatureSet(
+            args.tenant,
+            args.spec,
+            args.owner
+          );
+          return {
+            content: [{
+              type: "text",
+              text: JSON.stringify({
+                success: true,
+                featureSet: {
+                  id: result.id,
+                  name: result.name,
+                  version: result.version,
+                  status: result.status
+                }
+              }, null, 2)
+            }]
+          };
+        }
+        
+        case 'materialize_features': {
+          // Get feature set ID by name and version
+          const client = await featureRegistry.db.connect();
+          try {
+            const fsResult = await client.query(
+              `SELECT id FROM mlops.feature_set 
+               WHERE tenant_id = $1 AND name = $2 AND version = $3`,
+              [args.tenant, args.name, args.version]
+            );
+            
+            if (fsResult.rows.length === 0) {
+              throw new Error(`Feature set not found: ${args.name} v${args.version}`);
+            }
+            
+            const featureSetId = fsResult.rows[0].id;
+            
+            if (args.mode === 'offline' || args.mode === 'both') {
+              const result = await featureRegistry.materializeOffline(
+                args.tenant,
+                featureSetId
+              );
+              
+              return {
+                content: [{
+                  type: "text",
+                  text: JSON.stringify({
+                    success: true,
+                    mode: args.mode,
+                    viewName: result.viewName,
+                    materializationId: result.materializationId
+                  }, null, 2)
+                }]
+              };
+            }
+            
+            if (args.mode === 'online') {
+              // Start online worker if needed
+              const { OnlineFeatureWorker } = await import('../../ml-pipeline/src/feature_engineering/stream_worker.js');
+              const worker = new OnlineFeatureWorker();
+              await worker.start();
+              
+              return {
+                content: [{
+                  type: "text",
+                  text: JSON.stringify({
+                    success: true,
+                    mode: 'online',
+                    message: 'Online feature worker started'
+                  }, null, 2)
+                }]
+              };
+            }
+          } finally {
+            client.release();
+          }
+        }
+        
+        case 'get_feature_vector': {
+          const result = await featureRegistry.getFeatureVector(
+            args.tenant,
+            args.name,
+            args.version,
+            args.entity_id
+          );
+          
+          return {
+            content: [{
+              type: "text",
+              text: JSON.stringify({
+                success: true,
+                entityId: args.entity_id,
+                features: result.features,
+                computedAt: result.computed_at,
+                cacheHit: result.cache_hit,
+                missing: result.missing || false
+              }, null, 2)
+            }]
+          };
+        }
+        
+        default:
+          throw new Error(`Unknown MLOps tool type: ${toolType}`);
+      }
+    } catch (error) {
+      logger.error(`MLOps tool execution failed: ${error.message}`);
+      return {
+        content: [{ 
+          type: "text", 
+          text: JSON.stringify({
+            success: false,
+            error: error.message
+          }, null, 2)
+        }],
+        isError: true
+      };
+    }
+  }
+
+  /**
    * Get hub statistics
    */
   getHubStats() {
@@ -1670,9 +2081,13 @@ Use these hub tools to explore and manage all capabilities across your MCP ecosy
 
     // Also sync all currently connected servers on initialization
     setTimeout(() => {
-      // First register lightweight skeletons so server names appear instantly
+      // First register lightweight skeletons so server names appear immediately
       this.registerServersFromConfig().catch(err => {
-        logger.warn(`Failed skeleton register: ${err.message}`);
+        if (logger && logger.warn) {
+          logger.warn(`Failed skeleton register: ${err.message}`);
+        } else {
+          console.warn(`Failed skeleton register: ${err.message}`);
+        }
       }).finally(() => {
         // Then sync connected servers when available
         this.syncAllConnectedServers().catch(err => {
@@ -1732,5 +2147,14 @@ Use these hub tools to explore and manage all capabilities across your MCP ecosy
     } finally {
       clearTimeout(t);
     }
+  }
+
+  /**
+   * Generate a unique execution ID for tracing and monitoring
+   */
+  _generateExecutionId() {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8);
+    return `chain_${timestamp}_${random}`;
   }
 }

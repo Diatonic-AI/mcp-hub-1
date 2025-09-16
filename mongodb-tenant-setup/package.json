@@ -1,0 +1,21 @@
+{
+  "name": "mcp-hub-mongodb-tenant-setup",
+  "version": "1.0.0",
+  "description": "MongoDB tenant setup for MCP-Hub system with container support",
+  "main": "setup-mongodb-tenant.js",
+  "scripts": {
+    "setup": "node setup-mongodb-tenant.js",
+    "test-connection": "node test-connection.js",
+    "test-container": "node container-test.js",
+    "test-network": "./network-test.sh",
+    "verify-all": "npm run test-connection && npm run test-network"
+  },
+  "dependencies": {
+    "mongodb": "^6.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "author": "MCP-Hub Setup",
+  "license": "MIT"
+}

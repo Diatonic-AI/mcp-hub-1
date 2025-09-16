@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP-Hub Dashboard | ML/DL Pipeline Analytics</title>
+    
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #7c3aed;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --dark-bg: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+            --glow-color: #3b82f6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .logo i {
+            color: var(--primary-color);
+            font-size: 2rem;
+        }
+
+        .status-indicators {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.active {
+            background: var(--success-color);
+        }
+
+        .status-dot.warning {
+            background: var(--warning-color);
+        }
+
+        .status-dot.error {
+            background: var(--danger-color);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Pipeline Visualization */
+        .pipeline-section {
+            margin-bottom: 3rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .pipeline-container {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 2rem;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pipeline-flow {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            min-height: 200px;
+        }
+
+        .pipeline-node {
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+            box-shadow: 0 10px 30px rgba(37, 99, 235, 0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .pipeline-node:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(37, 99, 235, 0.5);
+        }
+
+        .pipeline-node h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .pipeline-stats {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* Animated Flow Lines */
+        .flow-line {
+            position: absolute;
+            top: 50%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--glow-color), transparent);
+            z-index: 1;
+        }
+
+        .flow-particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: var(--glow-color);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--glow-color);
+            animation: flow 3s linear infinite;
+        }
+
+        @keyframes flow {
+            0% { left: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { left: 100%; opacity: 0; }
+        }
+
+        /* Grid Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .card-icon {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .stat-change {
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+
+        .stat-change.positive {
+            color: var(--success-color);
+        }
+
+        .stat-change.negative {
+            color: var(--danger-color);
+        }
+
+        /* Tables */
+        .table-container {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        tbody tr:hover {
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        /* Status Badges */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .badge.connected {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success-color);
+        }
+
+        .badge.disconnected {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger-color);
+        }
+
+        .badge.connecting {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning-color);
+        }
+
+        .badge.unauthorized {
+            background: rgba(124, 58, 237, 0.2);
+            color: var(--secondary-color);
+        }
+
+        /* Search Box */
+        .search-container {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 1rem 1rem 1rem 3rem;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        /* Charts Container */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 1rem;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab {
+            padding: 1rem 1.5rem;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            position: relative;
+            transition: color 0.3s ease;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            color: var(--primary-color);
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--primary-color);
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pipeline-flow {
+                flex-direction: column;
+                gap: 2rem;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        /* Heatmap for anomalies */
+        .heatmap-cell {
+            width: 20px;
+            height: 20px;
+            display: inline-block;
+            margin: 1px;
+            border-radius: 2px;
+            transition: transform 0.2s ease;
+        }
+
+        .heatmap-cell:hover {
+            transform: scale(1.5);
+            z-index: 10;
+        }
+
+        /* Floating action button */
+        .fab {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            box-shadow: 0 10px 30px rgba(37, 99, 235, 0.5);
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .fab:hover {
+            transform: scale(1.1);
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 5rem;
+            right: 2rem;
+            background: var(--card-bg);
+            border-left: 4px solid var(--primary-color);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-network-wired"></i>
+                <span>MCP-Hub Dashboard</span>
+            </div>
+            <div class="status-indicators">
+                <div class="status-item">
+                    <span class="status-dot active"></span>
+                    <span>Hub Status: <span id="hubStatus">Ready</span></span>
+                </div>
+                <div class="status-item">
+                    <span class="status-dot active"></span>
+                    <span>Pipeline: <span id="pipelineStatus">Active</span></span>
+                </div>
+                <div class="status-item">
+                    <i class="fas fa-clock"></i>
+                    <span id="currentTime">--:--:--</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- ML/DL Pipeline Visualization -->
+        <section class="pipeline-section">
+            <h2 class="section-title">
+                <i class="fas fa-project-diagram"></i>
+                ML/DL Telemetry Pipeline
+            </h2>
+            <div class="pipeline-container">
+                <div class="pipeline-flow">
+                    <!-- Pipeline Nodes -->
+                    <div class="pipeline-node">
+                        <i class="fas fa-plug fa-2x"></i>
+                        <h3>MCP Tools</h3>
+                        <div class="pipeline-stats">
+                            <div id="toolCallsPerSec">0 calls/s</div>
+                        </div>
+                    </div>
+                    
+                    <div class="flow-line" style="left: 180px; width: 120px;">
+                        <div class="flow-particle"></div>
+                    </div>
+                    
+                    <div class="pipeline-node">
+                        <i class="fas fa-stream fa-2x"></i>
+                        <h3>Redis Streams</h3>
+                        <div class="pipeline-stats">
+                            <div id="redisQueueSize">0 queued</div>
+                        </div>
+                    </div>
+                    
+                    <div class="flow-line" style="left: 380px; width: 120px;">
+                        <div class="flow-particle" style="animation-delay: 1s;"></div>
+                    </div>
+                    
+                    <div class="pipeline-node">
+                        <i class="fas fa-database fa-2x"></i>
+                        <h3>Data Stores</h3>
+                        <div class="pipeline-stats">
+                            <div id="dataStoreWrites">0 writes/s</div>
+                        </div>
+                    </div>
+                    
+                    <div class="flow-line" style="left: 580px; width: 120px;">
+                        <div class="flow-particle" style="animation-delay: 2s;"></div>
+                    </div>
+                    
+                    <div class="pipeline-node">
+                        <i class="fas fa-brain fa-2x"></i>
+                        <h3>LM Studio</h3>
+                        <div class="pipeline-stats">
+                            <div id="embeddingsPerSec">0 emb/s</div>
+                        </div>
+                    </div>
+                    
+                    <div class="flow-line" style="left: 780px; width: 120px;">
+                        <div class="flow-particle" style="animation-delay: 3s;"></div>
+                    </div>
+                    
+                    <div class="pipeline-node">
+                        <i class="fas fa-vector-square fa-2x"></i>
+                        <h3>Qdrant</h3>
+                        <div class="pipeline-stats">
+                            <div id="vectorCount">0 vectors</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats Overview -->
+        <div class="stats-grid">
+            <div class="stat-card fade-in">
+                <div class="stat-value" id="totalCalls">0</div>
+                <div class="stat-label">Total API Calls</div>
+                <div class="stat-change positive">
+                    <i class="fas fa-arrow-up"></i> <span id="callsChange">+0%</span> from last hour
+                </div>
+            </div>
+            
+            <div class="stat-card fade-in" style="animation-delay: 0.1s;">
+                <div class="stat-value" id="activeServers">0</div>
+                <div class="stat-label">Active Servers</div>
+                <div class="stat-change positive">
+                    <i class="fas fa-circle"></i> <span id="serversOnline">0</span> online
+                </div>
+            </div>
+            
+            <div class="stat-card fade-in" style="animation-delay: 0.2s;">
+                <div class="stat-value" id="avgLatency">0ms</div>
+                <div class="stat-label">Avg Latency</div>
+                <div class="stat-change positive">
+                    <i class="fas fa-arrow-down"></i> <span id="latencyChange">-0%</span> improvement
+                </div>
+            </div>
+            
+            <div class="stat-card fade-in" style="animation-delay: 0.3s;">
+                <div class="stat-value" id="errorRate">0%</div>
+                <div class="stat-label">Error Rate</div>
+                <div class="stat-change positive">
+                    <i class="fas fa-check-circle"></i> <span id="errorStatus">Healthy</span>
+                </div>
+            </div>
+            
+            <div class="stat-card fade-in" style="animation-delay: 0.4s;">
+                <div class="stat-value" id="anomalyCount">0</div>
+                <div class="stat-label">Anomalies (24h)</div>
+                <div class="stat-change negative">
+                    <i class="fas fa-exclamation-triangle"></i> <span id="anomalyLevel">Low</span> severity
+                </div>
+            </div>
+            
+            <div class="stat-card fade-in" style="animation-delay: 0.5s;">
+                <div class="stat-value" id="embeddingCount">0</div>
+                <div class="stat-label">Embeddings</div>
+                <div class="stat-change positive">
+                    <i class="fas fa-database"></i> <span id="embeddingGrowth">+0</span> today
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('servers')">
+                <i class="fas fa-server"></i> Servers
+            </button>
+            <button class="tab" onclick="switchTab('tools')">
+                <i class="fas fa-tools"></i> Tools
+            </button>
+            <button class="tab" onclick="switchTab('metrics')">
+                <i class="fas fa-chart-line"></i> Metrics
+            </button>
+            <button class="tab" onclick="switchTab('anomalies')">
+                <i class="fas fa-exclamation-triangle"></i> Anomalies
+            </button>
+        </div>
+
+        <!-- Servers Table -->
+        <div id="serversTab" class="tab-content">
+            <div class="table-container">
+                <div class="card-header">
+                    <h3 class="card-title">MCP Servers Status</h3>
+                    <button class="btn" onclick="refreshServers()">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </div>
+                
+                <div class="search-container">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" class="search-input" placeholder="Search servers..." id="serverSearch">
+                </div>
+                
+                <table id="serversTable">
+                    <thead>
+                        <tr>
+                            <th>Server Name</th>
+                            <th>Status</th>
+                            <th>Tools</th>
+                            <th>Resources</th>
+                            <th>Uptime</th>
+                            <th>Last Connected</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="serversTableBody">
+                        <!-- Dynamically populated -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tools Table -->
+        <div id="toolsTab" class="tab-content" style="display: none;">
+            <div class="table-container">
+                <div class="card-header">
+                    <h3 class="card-title">Available Tools</h3>
+                    <span id="totalToolsCount">0 tools</span>
+                </div>
+                
+                <div class="search-container">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" class="search-input" placeholder="Search tools..." id="toolSearch">
+                </div>
+                
+                <table id="toolsTable">
+                    <thead>
+                        <tr>
+                            <th>Tool Name</th>
+                            <th>Server</th>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th>Calls (24h)</th>
+                            <th>Avg Latency</th>
+                            <th>Success Rate</th>
+                            <th>Last Used</th>
+                        </tr>
+                    </thead>
+                    <tbody id="toolsTableBody">
+                        <!-- Dynamically populated -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Metrics Charts -->
+        <div id="metricsTab" class="tab-content" style="display: none;">
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">API Calls Timeline</h3>
+                        <i class="fas fa-chart-line card-icon"></i>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="callsChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Latency Distribution</h3>
+                        <i class="fas fa-tachometer-alt card-icon"></i>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="latencyChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Top Tools by Usage</h3>
+                        <i class="fas fa-ranking-star card-icon"></i>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="topToolsChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Error Rate Trend</h3>
+                        <i class="fas fa-exclamation-circle card-icon"></i>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="errorRateChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Anomalies View -->
+        <div id="anomaliesTab" class="tab-content" style="display: none;">
+            <div class="table-container">
+                <div class="card-header">
+                    <h3 class="card-title">Detected Anomalies</h3>
+                    <select id="anomalyFilter">
+                        <option value="all">All Severities</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                </div>
+                
+                <table id="anomaliesTable">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Type</th>
+                            <th>Severity</th>
+                            <th>Server</th>
+                            <th>Tool</th>
+                            <th>Description</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="anomaliesTableBody">
+                        <!-- Dynamically populated -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Anomaly Heatmap -->
+            <div class="card" style="margin-top: 2rem;">
+                <div class="card-header">
+                    <h3 class="card-title">Anomaly Heatmap (Last 7 Days)</h3>
+                    <i class="fas fa-fire card-icon"></i>
+                </div>
+                <div id="anomalyHeatmap" style="padding: 1rem;">
+                    <!-- Dynamically generated heatmap -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Action Button -->
+    <div class="fab" onclick="openSemanticSearch()">
+        <i class="fas fa-search"></i>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification">
+        <div id="notificationContent"></div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = window.location.origin + '/api';
+        const SSE_URL = window.location.origin + '/api/telemetry/stream';
+        
+        // State
+        let currentTab = 'servers';
+        let charts = {};
+        let updateInterval;
+        let sseConnection;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeApp();
+            startRealTimeUpdates();
+            updateClock();
+            setInterval(updateClock, 1000);
+        });
+        
+        // Initialize Application
+        async function initializeApp() {
+            try {
+                // Load initial data
+                await Promise.all([
+                    loadServers(),
+                    loadTools(),
+                    loadMetrics(),
+                    loadAnomalies(),
+                    loadSummary()
+                ]);
+                
+                // Initialize charts
+                initializeCharts();
+                
+                // Connect to SSE stream
+                connectToSSE();
+                
+                // Start periodic updates
+                updateInterval = setInterval(updateDashboard, 5000);
+                
+                showNotification('Dashboard initialized successfully', 'success');
+            } catch (error) {
+                console.error('Failed to initialize dashboard:', error);
+                showNotification('Failed to initialize dashboard', 'error');
+            }
+        }
+        
+        // Clock
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = now.toLocaleTimeString();
+        }
+        
+        // Tab Switching
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.style.display = 'none';
+            });
+            
+            // Show selected tab
+            document.getElementById(tab + 'Tab').style.display = 'block';
+            
+            // Refresh data for the selected tab
+            switch(tab) {
+                case 'servers':
+                    loadServers();
+                    break;
+                case 'tools':
+                    loadTools();
+                    break;
+                case 'metrics':
+                    updateCharts();
+                    break;
+                case 'anomalies':
+                    loadAnomalies();
+                    break;
+            }
+        }
+        
+        // Load Servers
+        async function loadServers() {
+            try {
+                const response = await fetch(`${API_BASE}/servers`);
+                const data = await response.json();
+                
+                const tbody = document.getElementById('serversTableBody');
+                tbody.innerHTML = '';
+                
+                let activeCount = 0;
+                
+                data.servers.forEach(server => {
+                    if (server.status === 'connected') activeCount++;
+                    
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                        <td><strong>${server.name}</strong></td>
+                        <td><span class="badge ${server.status}">${server.status}</span></td>
+                        <td>${server.capabilities?.tools?.length || 0}</td>
+                        <td>${server.capabilities?.resources?.length || 0}</td>
+                        <td>${formatUptime(server.uptime)}</td>
+                        <td>${server.lastStarted ? new Date(server.lastStarted).toLocaleString() : 'Never'}</td>
+                        <td>
+                            <button onclick="refreshServer('${server.name}')" title="Refresh">
+                                <i class="fas fa-sync"></i>
+                            </button>
+                            ${server.status === 'disconnected' ? 
+                                `<button onclick="startServer('${server.name}')" title="Start">
+                                    <i class="fas fa-play"></i>
+                                </button>` : 
+                                `<button onclick="stopServer('${server.name}')" title="Stop">
+                                    <i class="fas fa-stop"></i>
+                                </button>`
+                            }
+                        </td>
+                    `;
+                });
+                
+                // Update stats
+                document.getElementById('activeServers').textContent = activeCount;
+                document.getElementById('serversOnline').textContent = activeCount;
+                
+            } catch (error) {
+                console.error('Failed to load servers:', error);
+            }
+        }
+        
+        // Load Tools
+        async function loadTools() {
+            try {
+                const [toolsResponse, metricsResponse] = await Promise.all([
+                    fetch(`${API_BASE}/tools`),
+                    fetch(`${API_BASE}/analytics/metrics?bucket=hour`)
+                ]);
+                
+                const toolsData = await toolsResponse.json();
+                const metricsData = await metricsResponse.json();
+                
+                // Create metrics map
+                const metricsMap = {};
+                metricsData.metrics.forEach(m => {
+                    const key = `${m.server}__${m.tool}`;
+                    metricsMap[key] = m;
+                });
+                
+                const tbody = document.getElementById('toolsTableBody');
+                tbody.innerHTML = '';
+                
+                toolsData.tools.forEach(tool => {
+                    const metrics = metricsMap[`${tool.serverName}__${tool.name}`] || {};
+                    
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                        <td><strong>${tool.name}</strong></td>
+                        <td>${tool.serverName}</td>
+                        <td>${tool.description || 'No description'}</td>
+                        <td>${tool.category || 'general'}</td>
+                        <td>${metrics.call_count || 0}</td>
+                        <td>${metrics.latency_p50 ? metrics.latency_p50 + 'ms' : '-'}</td>
+                        <td>${metrics.call_count ? 
+                            Math.round(100 * (metrics.success_count || 0) / metrics.call_count) + '%' : 
+                            '-'}</td>
+                        <td>${metrics.timestamp ? new Date(metrics.timestamp).toLocaleTimeString() : 'Never'}</td>
+                    `;
+                });
+                
+                document.getElementById('totalToolsCount').textContent = `${toolsData.tools.length} tools`;
+                
+            } catch (error) {
+                console.error('Failed to load tools:', error);
+            }
+        }
+        
+        // Load Metrics
+        async function loadMetrics() {
+            try {
+                const response = await fetch(`${API_BASE}/analytics/summary`);
+                const data = await response.json();
+                
+                const summary = data.summary;
+                
+                // Update stats cards
+                document.getElementById('totalCalls').textContent = formatNumber(summary.totalCalls);
+                document.getElementById('avgLatency').textContent = summary.avgLatency + 'ms';
+                document.getElementById('errorRate').textContent = summary.errorRate + '%';
+                document.getElementById('anomalyCount').textContent = summary.anomalyCount;
+                
+                // Update changes
+                document.getElementById('callsChange').textContent = '+12%'; // Would calculate from historical data
+                document.getElementById('latencyChange').textContent = '-5%';
+                document.getElementById('errorStatus').textContent = summary.errorRate < 5 ? 'Healthy' : 'Warning';
+                document.getElementById('anomalyLevel').textContent = 
+                    summary.highSeverityAnomalies > 5 ? 'High' : 
+                    summary.highSeverityAnomalies > 0 ? 'Medium' : 'Low';
+                
+            } catch (error) {
+                console.error('Failed to load metrics:', error);
+            }
+        }
+        
+        // Load Anomalies
+        async function loadAnomalies() {
+            try {
+                const response = await fetch(`${API_BASE}/analytics/anomalies?limit=50`);
+                const data = await response.json();
+                
+                const tbody = document.getElementById('anomaliesTableBody');
+                tbody.innerHTML = '';
+                
+                data.anomalies.forEach(anomaly => {
+                    const row = tbody.insertRow();
+                    const severityColor = 
+                        anomaly.severity === 'high' ? 'danger' : 
+                        anomaly.severity === 'medium' ? 'warning' : 'secondary';
+                    
+                    row.innerHTML = `
+                        <td>${new Date(anomaly.created_at).toLocaleTimeString()}</td>
+                        <td>${anomaly.type}</td>
+                        <td><span class="badge ${severityColor}">${anomaly.severity}</span></td>
+                        <td>${anomaly.server || '-'}</td>
+                        <td>${anomaly.tool || '-'}</td>
+                        <td>${anomaly.description}</td>
+                        <td>${JSON.stringify(anomaly.metadata || {})}</td>
+                    `;
+                });
+                
+                // Generate heatmap
+                generateAnomalyHeatmap(data.anomalies);
+                
+            } catch (error) {
+                console.error('Failed to load anomalies:', error);
+            }
+        }
+        
+        // Load Summary
+        async function loadSummary() {
+            try {
+                const response = await fetch(`${API_BASE}/analytics/health`);
+                const health = await response.json();
+                
+                // Update pipeline status
+                const pipelineHealthy = health.status === 'healthy';
+                document.getElementById('pipelineStatus').textContent = pipelineHealthy ? 'Active' : 'Degraded';
+                
+                // Update component stats
+                if (health.components.qdrant) {
+                    document.getElementById('vectorCount').textContent = 
+                        formatNumber(health.components.qdrant.points || 0) + ' vectors';
+                }
+                
+            } catch (error) {
+                console.error('Failed to load summary:', error);
+            }
+        }
+        
+        // Initialize Charts
+        function initializeCharts() {
+            // Calls Timeline Chart
+            const callsCtx = document.getElementById('callsChart');
+            if (callsCtx) {
+                charts.calls = new Chart(callsCtx, {
+                    type: 'line',
+                    data: {
+                        labels: generateTimeLabels(24),
+                        datasets: [{
+                            label: 'API Calls',
+                            data: generateRandomData(24, 100, 500),
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: getChartOptions('Calls per Hour')
+                });
+            }
+            
+            // Latency Distribution Chart
+            const latencyCtx = document.getElementById('latencyChart');
+            if (latencyCtx) {
+                charts.latency = new Chart(latencyCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['< 100ms', '100-500ms', '500ms-1s', '1s-5s', '> 5s'],
+                        datasets: [{
+                            label: 'Request Count',
+                            data: [450, 320, 150, 45, 12],
+                            backgroundColor: [
+                                'rgba(16, 185, 129, 0.8)',
+                                'rgba(59, 130, 246, 0.8)',
+                                'rgba(245, 158, 11, 0.8)',
+                                'rgba(239, 68, 68, 0.8)',
+                                'rgba(124, 58, 237, 0.8)'
+                            ]
+                        }]
+                    },
+                    options: getChartOptions('Latency Distribution')
+                });
+            }
+            
+            // Top Tools Chart
+            const topToolsCtx = document.getElementById('topToolsChart');
+            if (topToolsCtx) {
+                charts.topTools = new Chart(topToolsCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Tool A', 'Tool B', 'Tool C', 'Tool D', 'Other'],
+                        datasets: [{
+                            data: [300, 250, 200, 150, 100],
+                            backgroundColor: [
+                                '#3b82f6',
+                                '#8b5cf6',
+                                '#10b981',
+                                '#f59e0b',
+                                '#6b7280'
+                            ]
+                        }]
+                    },
+                    options: {
+                        ...getChartOptions('Top Tools by Usage'),
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+            
+            // Error Rate Chart
+            const errorRateCtx = document.getElementById('errorRateChart');
+            if (errorRateCtx) {
+                charts.errorRate = new Chart(errorRateCtx, {
+                    type: 'line',
+                    data: {
+                        labels: generateTimeLabels(24),
+                        datasets: [{
+                            label: 'Error Rate %',
+                            data: generateRandomData(24, 0, 10),
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: getChartOptions('Error Rate Trend')
+                });
+            }
+        }
+        
+        // Chart Options Helper
+        function getChartOptions(title) {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#94a3b8'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#94a3b8'
+                        }
+                    }
+                }
+            };
+        }
+        
+        // Update Charts
+        async function updateCharts() {
+            try {
+                const response = await fetch(`${API_BASE}/analytics/metrics?bucket=hour&limit=24`);
+                const data = await response.json();
+                
+                // Group metrics by hour
+                const hourlyMetrics = {};
+                data.metrics.forEach(m => {
+                    const hour = new Date(m.timestamp).getHours();
+                    if (!hourlyMetrics[hour]) {
+                        hourlyMetrics[hour] = {
+                            calls: 0,
+                            errors: 0,
+                            latency: []
+                        };
+                    }
+                    hourlyMetrics[hour].calls += m.call_count;
+                    hourlyMetrics[hour].errors += m.error_count;
+                    hourlyMetrics[hour].latency.push(m.latency_p50);
+                });
+                
+                // Update calls chart
+                if (charts.calls) {
+                    const callsData = [];
+                    for (let i = 0; i < 24; i++) {
+                        callsData.push(hourlyMetrics[i]?.calls || 0);
+                    }
+                    charts.calls.data.datasets[0].data = callsData;
+                    charts.calls.update();
+                }
+                
+                // Update error rate chart
+                if (charts.errorRate) {
+                    const errorRateData = [];
+                    for (let i = 0; i < 24; i++) {
+                        const metrics = hourlyMetrics[i];
+                        if (metrics && metrics.calls > 0) {
+                            errorRateData.push((metrics.errors / metrics.calls * 100).toFixed(2));
+                        } else {
+                            errorRateData.push(0);
+                        }
+                    }
+                    charts.errorRate.data.datasets[0].data = errorRateData;
+                    charts.errorRate.update();
+                }
+                
+            } catch (error) {
+                console.error('Failed to update charts:', error);
+            }
+        }
+        
+        // Generate Anomaly Heatmap
+        function generateAnomalyHeatmap(anomalies) {
+            const heatmapContainer = document.getElementById('anomalyHeatmap');
+            heatmapContainer.innerHTML = '';
+            
+            // Group anomalies by day and hour
+            const heatmapData = {};
+            anomalies.forEach(anomaly => {
+                const date = new Date(anomaly.created_at);
+                const day = date.toLocaleDateString();
+                const hour = date.getHours();
+                
+                const key = `${day}-${hour}`;
+                if (!heatmapData[key]) {
+                    heatmapData[key] = 0;
+                }
+                heatmapData[key]++;
+            });
+            
+            // Generate heatmap cells
+            for (let day = 6; day >= 0; day--) {
+                const date = new Date();
+                date.setDate(date.getDate() - day);
+                const dayStr = date.toLocaleDateString();
+                
+                const dayContainer = document.createElement('div');
+                dayContainer.style.marginBottom = '5px';
+                
+                for (let hour = 0; hour < 24; hour++) {
+                    const key = `${dayStr}-${hour}`;
+                    const count = heatmapData[key] || 0;
+                    
+                    const cell = document.createElement('span');
+                    cell.className = 'heatmap-cell';
+                    cell.title = `${dayStr} ${hour}:00 - ${count} anomalies`;
+                    
+                    // Color based on count
+                    const intensity = Math.min(count / 10, 1);
+                    const color = count === 0 ? 'rgba(255,255,255,0.05)' : 
+                        `rgba(239, 68, 68, ${0.2 + intensity * 0.8})`;
+                    cell.style.backgroundColor = color;
+                    
+                    dayContainer.appendChild(cell);
+                }
+                
+                heatmapContainer.appendChild(dayContainer);
+            }
+        }
+        
+        // Server Actions
+        async function refreshServer(serverName) {
+            try {
+                const response = await fetch(`${API_BASE}/servers/refresh`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ server_name: serverName })
+                });
+                
+                if (response.ok) {
+                    showNotification(`Server ${serverName} refreshed`, 'success');
+                    loadServers();
+                }
+            } catch (error) {
+                showNotification(`Failed to refresh ${serverName}`, 'error');
+            }
+        }
+        
+        async function startServer(serverName) {
+            try {
+                const response = await fetch(`${API_BASE}/servers/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ server_name: serverName })
+                });
+                
+                if (response.ok) {
+                    showNotification(`Server ${serverName} started`, 'success');
+                    loadServers();
+                }
+            } catch (error) {
+                showNotification(`Failed to start ${serverName}`, 'error');
+            }
+        }
+        
+        async function stopServer(serverName) {
+            try {
+                const response = await fetch(`${API_BASE}/servers/stop`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ server_name: serverName })
+                });
+                
+                if (response.ok) {
+                    showNotification(`Server ${serverName} stopped`, 'success');
+                    loadServers();
+                }
+            } catch (error) {
+                showNotification(`Failed to stop ${serverName}`, 'error');
+            }
+        }
+        
+        // SSE Connection
+        function connectToSSE() {
+            if (sseConnection) {
+                sseConnection.close();
+            }
+            
+            sseConnection = new EventSource(SSE_URL);
+            
+            sseConnection.onopen = () => {
+                console.log('Connected to telemetry stream');
+                document.getElementById('hubStatus').textContent = 'Connected';
+            };
+            
+            sseConnection.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleTelemetryEvent(data);
+                } catch (error) {
+                    console.error('Failed to parse SSE event:', error);
+                }
+            };
+            
+            sseConnection.onerror = () => {
+                console.error('SSE connection error');
+                document.getElementById('hubStatus').textContent = 'Disconnected';
+                
+                // Reconnect after 5 seconds
+                setTimeout(connectToSSE, 5000);
+            };
+        }
+        
+        // Handle Telemetry Events
+        function handleTelemetryEvent(event) {
+            // Update real-time counters
+            if (event.type === 'mcp.call.complete') {
+                updateRealtimeStats(event);
+            }
+            
+            // Update pipeline flow animation
+            animatePipelineFlow();
+        }
+        
+        // Update Real-time Stats
+        function updateRealtimeStats(event) {
+            // This would accumulate stats and update displays
+            const callsPerSec = document.getElementById('toolCallsPerSec');
+            const current = parseInt(callsPerSec.textContent) || 0;
+            callsPerSec.textContent = (current + 1) + ' calls/s';
+            
+            // Reset counter periodically
+            setTimeout(() => {
+                callsPerSec.textContent = '0 calls/s';
+            }, 1000);
+        }
+        
+        // Animate Pipeline Flow
+        function animatePipelineFlow() {
+            // Add visual feedback for data flow
+            const particles = document.querySelectorAll('.flow-particle');
+            particles.forEach(particle => {
+                particle.style.boxShadow = '0 0 20px var(--glow-color)';
+                setTimeout(() => {
+                    particle.style.boxShadow = '0 0 10px var(--glow-color)';
+                }, 200);
+            });
+        }
+        
+        // Start Real-time Updates
+        function startRealTimeUpdates() {
+            // Update pipeline stats every second
+            setInterval(() => {
+                // Simulate real-time updates (would be replaced with actual data)
+                document.getElementById('redisQueueSize').textContent = 
+                    Math.floor(Math.random() * 100) + ' queued';
+                document.getElementById('dataStoreWrites').textContent = 
+                    Math.floor(Math.random() * 50) + ' writes/s';
+                document.getElementById('embeddingsPerSec').textContent = 
+                    Math.floor(Math.random() * 10) + ' emb/s';
+            }, 1000);
+        }
+        
+        // Update Dashboard
+        async function updateDashboard() {
+            if (currentTab === 'servers') {
+                await loadServers();
+            } else if (currentTab === 'metrics') {
+                await updateCharts();
+            }
+            
+            // Always update summary stats
+            await loadMetrics();
+        }
+        
+        // Semantic Search
+        function openSemanticSearch() {
+            const query = prompt('Enter search query:');
+            if (query) {
+                performSemanticSearch(query);
+            }
+        }
+        
+        async function performSemanticSearch(query) {
+            try {
+                const response = await fetch(`${API_BASE}/analytics/search?text=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                
+                showNotification(`Found ${data.count} matching results`, 'success');
+                
+                // Display results (would open a modal or new view)
+                console.log('Search results:', data.results);
+                
+            } catch (error) {
+                showNotification('Search failed', 'error');
+            }
+        }
+        
+        // Utility Functions
+        function formatUptime(seconds) {
+            if (!seconds) return '0s';
+            
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            
+            if (hours > 0) {
+                return `${hours}h ${minutes}m`;
+            } else if (minutes > 0) {
+                return `${minutes}m ${secs}s`;
+            } else {
+                return `${secs}s`;
+            }
+        }
+        
+        function formatNumber(num) {
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(1) + 'M';
+            } else if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'K';
+            }
+            return num.toString();
+        }
+        
+        function generateTimeLabels(hours) {
+            const labels = [];
+            const now = new Date();
+            
+            for (let i = hours - 1; i >= 0; i--) {
+                const time = new Date(now - i * 3600000);
+                labels.push(time.getHours() + ':00');
+            }
+            
+            return labels;
+        }
+        
+        function generateRandomData(count, min, max) {
+            const data = [];
+            for (let i = 0; i < count; i++) {
+                data.push(Math.floor(Math.random() * (max - min + 1)) + min);
+            }
+            return data;
+        }
+        
+        // Notifications
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            const content = document.getElementById('notificationContent');
+            
+            content.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 
+                    type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                ${message}
+            `;
+            
+            notification.style.borderLeftColor = 
+                type === 'success' ? 'var(--success-color)' : 
+                type === 'error' ? 'var(--danger-color)' : 'var(--primary-color)';
+            
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Search Functionality
+        document.getElementById('serverSearch')?.addEventListener('input', (e) => {
+            filterTable('serversTable', e.target.value);
+        });
+        
+        document.getElementById('toolSearch')?.addEventListener('input', (e) => {
+            filterTable('toolsTable', e.target.value);
+        });
+        
+        function filterTable(tableId, searchTerm) {
+            const table = document.getElementById(tableId);
+            const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+            
+            for (let row of rows) {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm.toLowerCase()) ? '' : 'none';
+            }
+        }
+        
+        // Anomaly Filter
+        document.getElementById('anomalyFilter')?.addEventListener('change', (e) => {
+            const severity = e.target.value;
+            const rows = document.getElementById('anomaliesTableBody').getElementsByTagName('tr');
+            
+            for (let row of rows) {
+                if (severity === 'all') {
+                    row.style.display = '';
+                } else {
+                    const rowSeverity = row.querySelector('.badge').textContent.toLowerCase();
+                    row.style.display = rowSeverity === severity ? '' : 'none';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

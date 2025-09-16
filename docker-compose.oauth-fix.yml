@@ -1,0 +1,124 @@
+networks:
+  mcp-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+services:
+  mcp-hub:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: mcp-hub
+    restart: unless-stopped
+    
+    # Run as host user to access filesystem
+    user: "1000:1000"
+    
+    # Use host networking to make OAuth callback ports accessible
+    # This allows the ephemeral ports used by OAuth servers to be reachable
+    network_mode: host
+    
+    # Environment variables
+    environment:
+      - NODE_ENV=production
+      - PORT=37373
+      - HOST=127.0.0.1  # Bind only to localhost when using host networking
+      - WIX_OAUTH_CLIENT_ID=e2c8a702-1e3f-473e-90d7-320c3bbf108b
+      - WIX_OAUTH_REDIRECT_URL=http://localhost:37373/api/oauth/callback
+      # Hub Server URL for OAuth callbacks - accessible from host
+      - HUB_SERVER_URL=http://localhost:37373
+      # Add your WIX_API_TOKEN here or via .env file
+      # - WIX_API_TOKEN=your-token-here
+      
+      # Wix Configuration
+      - WIX_AUTO_AUTH=${WIX_AUTO_AUTH:-true}
+      - WIX_AUTH_TIMEOUT=${WIX_AUTH_TIMEOUT:-300}
+      - DISABLE_WIX=${DISABLE_WIX:-false}
+      
+      # Google Workspace Configuration (for host networking)
+      - GOOGLE_WORKSPACE_AUTO_AUTH=${GOOGLE_WORKSPACE_AUTO_AUTH:-true}
+      - GOOGLE_WORKSPACE_HOST=localhost
+      - GOOGLE_WORKSPACE_PORT=8001
+      - GOOGLE_WORKSPACE_AUTH_TIMEOUT=300
+      - DISABLE_GOOGLE_WORKSPACE=${DISABLE_GOOGLE_WORKSPACE:-false}
+      
+      # Database Configuration
+      - POSTGRES_CONNECTION_STRING=${POSTGRES_CONNECTION_STRING:-postgresql://postgres:DacDev@41@10.10.10.11:5432/postgres}
+      - POSTGRES_HOST=${POSTGRES_HOST:-10.10.10.11}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-DacDev@41}
+      - POSTGRES_DB=${POSTGRES_DB:-postgres}
+      
+      # n8n Configuration
+      - N8N_API_KEY=${N8N_API_KEY}
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_PORT=${N8N_PORT:-5678}
+      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
+      - N8N_BASE_URL=${N8N_BASE_URL:-http://localhost:5678}
+      
+      # Container environment configuration
+      - DISPLAY=${DISPLAY:-}
+      - XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-}
+    
+    # Environment file (create .env with your secrets)
+    env_file:
+      - .env
+    
+    # Volume mounts for configuration and data persistence
+    volumes:
+      # Application and config directories
+      - ./config:/app/config:ro
+      - mcp-hub-data:/app/data
+      - mcp-hub-logs:/app/logs
+      
+      # UV cache for faster Python package installs
+      - uv-cache:/home/mcp/.cache/uv
+      # Node.js global modules cache
+      - node-global-cache:/home/mcp/.npm
+      
+      # Essential filesystem access for MCP servers (secured)
+      - /home/daclab-ai:/home/daclab-ai:rw  # Required for filesystem MCP server - user home only
+      - /tmp:/tmp:rw    # Temporary files access
+      - .:/workspace:ro # Project workspace (read-only)
+      
+      # X11 forwarding for OAuth flows (Linux only) - minimal access
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${HOME}/.Xauthority:/home/mcp/.Xauthority:ro
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); const options = { host: 'localhost', port: process.env.PORT || 37373, path: '/api/health', timeout: 5000 }; const req = http.get(options, (res) => process.exit(res.statusCode === 200 ? 0 : 1)); req.on('error', () => process.exit(1));"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    
+    # Resource limits (3x increased for MCP server ecosystem)
+    deploy:
+      resources:
+        limits:
+          memory: 1536M  # 3x increase from 512M
+          cpus: '1.5'    # 3x increase from 0.5
+        reservations:
+          memory: 384M   # 3x increase from 128M
+          cpus: '0.3'    # 3x increase from 0.1
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  mcp-hub-data:
+    driver: local
+  mcp-hub-logs:
+    driver: local
+  uv-cache:
+    driver: local
+  node-global-cache:
+    driver: local

@@ -33,6 +33,9 @@ import {
 } from "./utils/errors.js";
 import { DevWatcher } from "./utils/dev-watcher.js";
 import { envResolver } from "./utils/env-resolver.js";
+import { telemetryIngestor } from "./telemetry/index.js";
+import { PostgreSQLManager } from "./utils/postgresql-manager.js";
+import { EnhancedRegistrationAdapter } from "./database/enhanced-db-adapter.js";
 
 const ConnectionStatus = {
   CONNECTED: "connected",
@@ -161,6 +164,17 @@ export class MCPConnection extends EventEmitter {
       this.error = null;
       this.status = ConnectionStatus.CONNECTING;
       this.lastStarted = new Date().toISOString();
+      
+      // Capture telemetry connection event
+      telemetryIngestor.captureConnectionEvent({
+        server: this.name,
+        state: ConnectionStatus.CONNECTING,
+        tenant: process.env.TENANT || 'default',
+        metadata: {
+          transportType: this.transportType,
+          displayName: this.displayName
+        }
+      });
 
       // Resolve config once for all transport types
       const resolvedConfig = await envResolver.resolveConfig(this.config, [
@@ -237,6 +251,9 @@ export class MCPConnection extends EventEmitter {
       await this.fetchServerInfo();
       await this.updateCapabilities();
       
+      // Register server and tools in database
+      await this.registerInDatabase();
+      
       // Emit initial toolsChanged event to trigger syncing to centralized index
       if (this.tools && this.tools.length > 0) {
         this.emit('toolsChanged', {
@@ -252,6 +269,19 @@ export class MCPConnection extends EventEmitter {
       this.status = ConnectionStatus.CONNECTED;
       this.startTime = Date.now();
       this.error = null;
+      
+      // Capture telemetry connection success
+      telemetryIngestor.captureConnectionEvent({
+        server: this.name,
+        state: ConnectionStatus.CONNECTED,
+        tenant: process.env.TENANT || 'default',
+        metadata: {
+          transportType: this.transportType,
+          serverInfo: this.serverInfo,
+          toolCount: this.tools.length,
+          resourceCount: this.resources.length
+        }
+      });
 
       // Begin idle timeout tracking if configured
       this._resetIdleTimer();
@@ -648,6 +678,19 @@ export class MCPConnection extends EventEmitter {
   async disconnect(error) {
     this.removeNotificationHandlers();
 
+    // Update database to mark server as disconnected
+    try {
+      const pgManager = PostgreSQLManager.getInstance();
+      if (pgManager && pgManager.isInitialized()) {
+        const registrationAdapter = new EnhancedRegistrationAdapter(pgManager);
+        const hubInstanceId = process.env.HUB_INSTANCE_ID || 'default-hub-instance';
+        await registrationAdapter.unregisterServerWithTracking(this.name, hubInstanceId);
+        logger.debug(`Updated database: ${this.name} marked as disconnected`);
+      }
+    } catch (dbError) {
+      logger.debug(`Failed to update database on disconnect for ${this.name}: ${dbError.message}`);
+    }
+
     // Stop dev watcher
     if (this.devWatcher) {
       await this.devWatcher.stop();
@@ -735,6 +778,69 @@ export class MCPConnection extends EventEmitter {
       serverInfo: this.serverInfo, // Include server's reported name/version
       config_source: this.config.config_source, // Include which config file this server came from
     };
+  }
+
+  /**
+   * Register this server and its tools in the PostgreSQL database
+   */
+  async registerInDatabase() {
+    try {
+      // Check if PostgreSQL is available
+      const pgManager = PostgreSQLManager.getInstance();
+      if (!pgManager || !pgManager.isInitialized()) {
+        logger.debug(`PostgreSQL not available, skipping database registration for ${this.name}`);
+        return;
+      }
+
+      // Create enhanced registration adapter
+      const registrationAdapter = new EnhancedRegistrationAdapter(pgManager);
+      
+      // Get hub instance ID (create a stable one if needed)
+      const hubInstanceId = process.env.HUB_INSTANCE_ID || 'default-hub-instance';
+      
+      // Prepare server info for registration
+      const serverInfo = {
+        name: this.name,
+        endpoint: this.hubServerUrl || `http://localhost:${process.env.PORT || 3005}/mcp`,
+        tools: this.tools.map(tool => ({
+          name: tool.name,
+          description: tool.description,
+          inputSchema: tool.inputSchema,
+          category: tool.category || 'general',
+          metadata: tool.metadata || {}
+        })),
+        metadata: {
+          displayName: this.displayName,
+          description: this.description,
+          configSource: this.config.config_source
+        },
+        transport: this.transportType,
+        serverInfo: {
+          ...this.serverInfo,
+          resourceCount: this.resources.length,
+          promptCount: this.prompts.length,
+          resourceTemplateCount: this.resourceTemplates.length
+        }
+      };
+      
+      // Register server and tools
+      const result = await registrationAdapter.registerServerWithTracking(serverInfo, hubInstanceId);
+      
+      logger.info(`Database registration complete for ${this.name}`, {
+        serverId: result.serverId,
+        toolsAdded: result.toolsAdded,
+        toolsUpdated: result.toolsUpdated,
+        toolsRemoved: result.toolsRemoved
+      });
+      
+      return result;
+    } catch (error) {
+      // Don't fail the connection if database registration fails
+      logger.error(`Failed to register ${this.name} in database`, { 
+        error: error.message 
+      });
+      return null;
+    }
   }
 
   async _createStdioTransport(resolvedConfig) {

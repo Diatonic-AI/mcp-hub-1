@@ -1,3 +1,4 @@
+# Updated Docker Compose configuration with PostgreSQL and MongoDB services
 networks:
   mcp-network:
     driver: bridge
@@ -6,12 +7,74 @@ networks:
         - subnet: 172.20.0.0/16
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mcp-hub-postgres
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    # ports:
+    #   - "127.0.0.1:5432:5432"
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-mcp_hub}
+      - POSTGRES_USER=${POSTGRES_USER:-admin}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-admin123}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/postgres-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-mcp_hub}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  mongodb:
+    image: mongo:7-jammy
+    container_name: mcp-hub-mongodb
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    # ports:
+    #   - "127.0.0.1:27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGODB_ROOT_USER:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGODB_ROOT_PASSWORD:-admin123}
+      - MONGO_INITDB_DATABASE=${MONGODB_DATABASE:-mcp_hub}
+    volumes:
+      - mongodb-data:/data/db
+      - mongodb-config:/data/configdb
+      - ./scripts/mongodb-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   mcp-hub:
     build: 
       context: .
       dockerfile: Dockerfile
     container_name: mcp-hub
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    
+    # Run as host user to access filesystem
+    user: "1000:1000"
     
     # Secure bridge network configuration
     networks:
@@ -25,25 +88,56 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=37373
-      - HOST=0.0.0.0  # Bind to all container interfaces (within container only)
-      - WIX_OAUTH_CLIENT_ID=e2c8a702-1e3f-473e-90d7-320c3bbf108b
+      - HOST=0.0.0.0
+      
+      # PostgreSQL Configuration
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-mcp_hub}
+      - POSTGRES_USER=${POSTGRES_USER:-admin}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-admin123}
+      - POSTGRES_URL=postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-admin123}@postgres:5432/${POSTGRES_DB:-mcp_hub}
+      - ENABLE_POSTGRESQL_INTEGRATION=${ENABLE_POSTGRESQL_INTEGRATION:-true}
+      
+      # MongoDB Configuration
+      - MONGODB_HOST=mongodb
+      - MONGODB_PORT=27017
+      - MONGODB_DATABASE=${MONGODB_DATABASE:-mcp_hub}
+      - MONGODB_ROOT_USER=${MONGODB_ROOT_USER:-admin}
+      - MONGODB_ROOT_PASSWORD=${MONGODB_ROOT_PASSWORD:-admin123}
+      - MONGODB_URI=mongodb://${MONGODB_ROOT_USER:-admin}:${MONGODB_ROOT_PASSWORD:-admin123}@mongodb:27017/${MONGODB_DATABASE:-mcp_hub}?authSource=admin
+      - TENANT_ID=mcp_hub
+      
+      # MongoDB Connection Pool Settings
+      - MONGODB_MAX_POOL_SIZE=10
+      - MONGODB_MIN_POOL_SIZE=2
+      - MONGODB_CONNECT_TIMEOUT_MS=10000
+      - MONGODB_SERVER_SELECTION_TIMEOUT_MS=5000
+      - MONGODB_MAX_IDLE_TIME_MS=30000
+      
+      # OAuth Configuration
+      - WIX_OAUTH_CLIENT_ID=${WIX_OAUTH_CLIENT_ID:-e2c8a702-1e3f-473e-90d7-320c3bbf108b}
       - WIX_OAUTH_REDIRECT_URL=http://localhost:37373/api/oauth/callback
-      # Hub Server URL for OAuth callbacks - accessible from host
       - HUB_SERVER_URL=http://localhost:37373
-      # Add your WIX_API_TOKEN here or via .env file
-      # - WIX_API_TOKEN=your-token-here
       
       # Wix Configuration
       - WIX_AUTO_AUTH=${WIX_AUTO_AUTH:-true}
       - WIX_AUTH_TIMEOUT=${WIX_AUTH_TIMEOUT:-300}
       - DISABLE_WIX=${DISABLE_WIX:-false}
       
-      # Google Workspace Configuration (for bridge networking)
+      # Google Workspace Configuration
       - GOOGLE_WORKSPACE_AUTO_AUTH=${GOOGLE_WORKSPACE_AUTO_AUTH:-true}
       - GOOGLE_WORKSPACE_HOST=mcp-hub
       - GOOGLE_WORKSPACE_PORT=8001
       - GOOGLE_WORKSPACE_AUTH_TIMEOUT=300
       - DISABLE_GOOGLE_WORKSPACE=${DISABLE_GOOGLE_WORKSPACE:-false}
+      
+      # n8n Configuration
+      - N8N_API_KEY=${N8N_API_KEY}
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_PORT=${N8N_PORT:-5678}
+      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
+      - N8N_BASE_URL=${N8N_BASE_URL:-http://localhost:5678}
       
       # Container environment configuration
       - DISPLAY=${DISPLAY:-}
@@ -66,35 +160,31 @@ services:
       - node-global-cache:/home/mcp/.npm
       
       # Essential filesystem access for MCP servers (secured)
-      - /home/daclab-ai:/home/daclab-ai:rw  # Required for filesystem MCP server - user home only
-      - /tmp:/tmp:rw    # Temporary files access
-      - .:/workspace:ro # Project workspace (read-only)
+      - /home/daclab-ai:/home/daclab-ai:rw
+      - /tmp:/tmp:rw
+      - .:/workspace:ro
       
-      # X11 forwarding for OAuth flows (Linux only) - minimal access
+      # X11 forwarding for OAuth flows (Linux only)
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ${HOME}/.Xauthority:/home/mcp/.Xauthority:ro
     
-    # Optional profile for host-specific mounts
-    # profiles:
-    #   - host-mounts
-    
-    # Health check
+    # Basic health check
     healthcheck:
-      test: ["CMD", "node", "-e", "const http = require('http'); const options = { host: 'localhost', port: process.env.PORT || 37373, path: '/api/health', timeout: 5000 }; const req = http.get(options, (res) => process.exit(res.statusCode === 200 ? 0 : 1)); req.on('error', () => process.exit(1));"]
+      test: ["CMD", "curl", "-f", "http://localhost:37373/api/health"]
       interval: 30s
       timeout: 10s
       start_period: 30s
       retries: 3
     
-    # Resource limits (3x increased for MCP server ecosystem)
+    # Resource limits
     deploy:
       resources:
         limits:
-          memory: 1536M  # 3x increase from 512M
-          cpus: '1.5'    # 3x increase from 0.5
+          memory: 2048m
+          cpus: '2.0'
         reservations:
-          memory: 384M   # 3x increase from 128M
-          cpus: '0.3'    # 3x increase from 0.1
+          memory: 512m
+          cpus: '0.5'
     
     # Logging configuration
     logging:
@@ -102,34 +192,14 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    
-  python-mcp:
-    build:
-      context: ./docker/python-mcp
-      dockerfile: Dockerfile
-    container_name: python-mcp
-    restart: unless-stopped
-    profiles: ["python-mcp"]
-    
-    # Secure bridge network configuration
-    networks:
-      - mcp-network
-    
-    # Share uv tool cache with hub (optional) for faster installs if hub still invokes uvx
-    volumes:
-      - uv-cache:/root/.cache/uv
-      # Essential filesystem access for Python MCP servers
-      - /home/daclab-ai:/home/daclab-ai:rw
-      - /tmp:/tmp:rw
-    # No ports exposed; stdio processes will be spawned later via docker exec (future improvement)
-    healthcheck:
-      test: ["CMD", "bash", "-c", "command -v uvx >/dev/null 2>&1"]
-      interval: 60s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
 
 volumes:
+  postgres-data:
+    driver: local
+  mongodb-data:
+    driver: local
+  mongodb-config:
+    driver: local
   mcp-hub-data:
     driver: local
   mcp-hub-logs:

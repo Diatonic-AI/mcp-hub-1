@@ -1,0 +1,38 @@
+{
+  "mongodb": {
+    "host": "10.10.10.13",
+    "port": 27017,
+    "database": "mcp_hub_mcp_hub",
+    "uri": "mongodb://10.10.10.13:27017/mcp_hub_mcp_hub",
+    "options": {
+      "maxPoolSize": 10,
+      "minPoolSize": 2,
+      "maxIdleTimeMS": 30000,
+      "serverSelectionTimeoutMS": 5000,
+      "connectTimeoutMS": 10000
+    }
+  },
+  "tenant": {
+    "id": "mcp_hub",
+    "database_name": "mcp_hub_mcp_hub",
+    "isolation_level": "database",
+    "created_at": "2025-09-08T18:57:33.493Z"
+  },
+  "authentication": {
+    "default_admin": {
+      "username": "admin",
+      "email": "admin@mcphub.local",
+      "password": "admin123!"
+    },
+    "service_account": {
+      "username": "service",
+      "email": "service@mcphub.local"
+    }
+  },
+  "features": {
+    "ttl_indexes": true,
+    "audit_logging": true,
+    "performance_metrics": true,
+    "tenant_isolation": true
+  }
+}

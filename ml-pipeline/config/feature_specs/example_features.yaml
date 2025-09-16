@@ -1,0 +1,295 @@
+# Example Feature Set Specifications for ML Pipeline
+# These demonstrate various feature engineering patterns
+
+---
+# Tool Chain Performance Features
+name: tool_chain_performance
+description: Features for analyzing tool chain execution patterns and performance
+source: telemetry.aggregates
+version: 1
+
+features:
+  # Basic aggregations
+  - name: avg_latency_1h
+    type: aggregation
+    column: avg_value
+    aggregation: avg
+    window: 1h
+    description: Average latency over 1 hour window
+    
+  - name: request_count_1h
+    type: aggregation
+    column: count
+    aggregation: sum
+    window: 1h
+    description: Total request count over 1 hour
+    
+  - name: p95_latency_1h
+    type: aggregation
+    column: p95_value
+    aggregation: max
+    window: 1h
+    description: 95th percentile latency over 1 hour
+    
+  # Derived features
+  - name: error_rate
+    type: expression
+    expression: error_count / total_count
+    description: Error rate as ratio of errors to total requests
+    
+  - name: success_rate
+    type: expression
+    expression: 1 - (error_count / total_count)
+    description: Success rate complement of error rate
+
+  # Direct mappings
+  - name: tool_id
+    type: direct
+    column: tool_id
+    description: Tool identifier
+    
+  - name: chain_id
+    type: direct
+    column: chain_id
+    description: Chain execution identifier
+
+validation:
+  - type: range
+    feature: avg_latency_1h
+    min: 0
+    max: 10000
+    
+  - type: range
+    feature: error_rate
+    min: 0
+    max: 1
+
+cacheTtl: 3600  # 1 hour cache TTL for online features
+
+eventFilters:
+  - type: tool_execution
+    source: mcp_hub
+    
+---
+# Model Training Features
+name: model_training_metrics
+description: Features for ML model training performance and quality metrics
+source: telemetry.confidence_scores
+version: 1
+
+features:
+  - name: avg_confidence
+    type: aggregation
+    column: confidence_score
+    aggregation: avg
+    window: 24h
+    description: Average model confidence over 24 hours
+    
+  - name: low_confidence_count
+    type: aggregation
+    column: confidence_score
+    aggregation: count
+    window: 24h
+    filter: confidence_score < 0.5
+    description: Count of low confidence predictions
+    
+  - name: prediction_accuracy
+    type: aggregation
+    column: is_correct
+    aggregation: avg
+    window: 24h
+    filter: is_correct IS NOT NULL
+    description: Accuracy of predictions with feedback
+    
+  - name: model_drift_detected
+    type: direct
+    column: drift_detected
+    source: telemetry.feature_drift
+    description: Whether model drift was detected
+
+joins:
+  - table: telemetry.feature_drift
+    type: LEFT
+    condition: confidence_scores.model_id = feature_drift.model_id AND confidence_scores.tenant_id = feature_drift.tenant_id
+
+cacheTtl: 7200  # 2 hour cache
+
+---
+# Resource Usage Features
+name: resource_utilization
+description: Features for system resource monitoring and optimization
+source: telemetry.resource_metrics
+version: 1
+
+features:
+  - name: cpu_usage_avg
+    type: aggregation
+    column: cpu_percent
+    aggregation: avg
+    window: 5m
+    description: Average CPU usage over 5 minutes
+    
+  - name: cpu_usage_max
+    type: aggregation
+    column: cpu_percent
+    aggregation: max
+    window: 5m
+    description: Peak CPU usage over 5 minutes
+    
+  - name: memory_usage_mb
+    type: aggregation
+    column: memory_used_mb
+    aggregation: avg
+    window: 5m
+    description: Average memory usage in MB
+    
+  - name: gpu_utilization
+    type: aggregation
+    column: gpu_percent
+    aggregation: avg
+    window: 5m
+    filter: gpu_percent IS NOT NULL
+    description: Average GPU utilization if available
+    
+  - name: io_throughput_mbps
+    type: expression
+    expression: (disk_read_bytes + disk_write_bytes) / 1048576 / 300
+    description: I/O throughput in MB per second (5 min window)
+    
+  - name: high_cpu_flag
+    type: expression
+    expression: CASE WHEN cpu_percent > 80 THEN 1 ELSE 0 END
+    description: Binary flag for high CPU usage
+
+validation:
+  - type: range
+    feature: cpu_usage_avg
+    min: 0
+    max: 100
+    
+  - type: range
+    feature: memory_usage_mb
+    min: 0
+
+cacheTtl: 300  # 5 minute cache
+
+eventFilters:
+  - type: resource_metric
+    
+---
+# Communication Metrics Features
+name: inter_step_communication
+description: Features for analyzing communication between chain steps
+source: telemetry.communication_metrics
+version: 1
+
+features:
+  - name: latency_p50
+    type: aggregation
+    column: latency_ms
+    aggregation: percentile_50
+    window: 1h
+    description: Median latency between steps
+    
+  - name: latency_p99
+    type: aggregation
+    column: latency_ms
+    aggregation: percentile_99
+    window: 1h
+    description: 99th percentile latency
+    
+  - name: data_transfer_mb
+    type: expression
+    expression: (bytes_sent + bytes_received) / 1048576
+    description: Total data transfer in MB
+    
+  - name: network_overhead_ratio
+    type: expression
+    expression: network_time_ms / latency_ms
+    description: Network time as ratio of total latency
+    
+  - name: failure_rate
+    type: aggregation
+    column: success
+    aggregation: avg
+    window: 1h
+    transform: 1 - value
+    description: Communication failure rate
+
+validation:
+  - type: range
+    feature: failure_rate
+    min: 0
+    max: 1
+    
+  - type: not_null
+    feature: latency_p50
+
+cacheTtl: 1800  # 30 minute cache
+
+---
+# A/B Test Features
+name: ab_test_metrics
+description: Features for A/B testing and experimentation
+source: telemetry.aggregates
+version: 1
+
+features:
+  - name: variant_a_conversion
+    type: aggregation
+    column: count
+    aggregation: sum
+    window: 24h
+    filter: metric_type = 'conversion' AND dimensions->>'variant' = 'A'
+    description: Variant A conversion count
+    
+  - name: variant_b_conversion
+    type: aggregation
+    column: count
+    aggregation: sum
+    window: 24h
+    filter: metric_type = 'conversion' AND dimensions->>'variant' = 'B'
+    description: Variant B conversion count
+    
+  - name: variant_a_revenue
+    type: aggregation
+    column: sum_value
+    aggregation: sum
+    window: 24h
+    filter: metric_type = 'revenue' AND dimensions->>'variant' = 'A'
+    description: Variant A total revenue
+    
+  - name: variant_b_revenue
+    type: aggregation
+    column: sum_value
+    aggregation: sum
+    window: 24h
+    filter: metric_type = 'revenue' AND dimensions->>'variant' = 'B'
+    description: Variant B total revenue
+    
+  - name: lift_percentage
+    type: expression
+    expression: ((variant_b_conversion / variant_a_conversion) - 1) * 100
+    description: Percentage lift of variant B over A
+    
+  - name: revenue_per_conversion_a
+    type: expression
+    expression: variant_a_revenue / NULLIF(variant_a_conversion, 0)
+    description: Revenue per conversion for variant A
+    
+  - name: revenue_per_conversion_b
+    type: expression
+    expression: variant_b_revenue / NULLIF(variant_b_conversion, 0)
+    description: Revenue per conversion for variant B
+
+validation:
+  - type: positive
+    feature: variant_a_conversion
+    
+  - type: positive
+    feature: variant_b_conversion
+
+cacheTtl: 3600  # 1 hour cache
+
+eventFilters:
+  - type: ab_test_event

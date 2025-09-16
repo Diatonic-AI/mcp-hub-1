@@ -1,0 +1,100 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/daclab-ai"]
+    },
+    "mcp-everything": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everything"]
+    },
+    "mcp-fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"]
+    },
+    "mcp-git": {
+      "command": "uvx",
+      "args": ["mcp-server-git", "--repository", "/home/daclab-ai/dev/mcp-hub"]
+    },
+    "mcp-memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    "mcp-sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "mcp-time": {
+      "command": "uvx",
+      "args": ["mcp-server-time"]
+    },
+    "mcp-google-maps": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-google-maps"],
+      "env": {
+        "GOOGLE_MAPS_API_KEY": "${GOOGLE_MAPS_API_KEY}"
+      }
+    },
+    "mcp-postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://mcp_user:daclab2024@10.10.10.11:5432/mcp_ml_dev"]
+    },
+    "mcp-puppeteer": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "mcp-docker": {
+      "command": "uvx",
+      "args": ["mcp-server-docker"]
+    },
+    "aws-cdk": {
+      "command": "uvx",
+      "args": ["awslabs.cdk-mcp-server"],
+      "env": {
+        "AWS_REGION": "${AWS_REGION:-us-east-1}"
+      }
+    },
+    "aws-dynamodb": {
+      "command": "uvx",
+      "args": ["awslabs.dynamodb-mcp-server"],
+      "env": {
+        "AWS_REGION": "${AWS_REGION:-us-east-1}"
+      }
+    },
+    "mcp-bigquery": {
+      "command": "uvx",
+      "args": ["mcp-server-bigquery"],
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+      }
+    },
+    "mcp-jupyter": {
+      "command": "uvx",
+      "args": ["mcp-server-jupyter"],
+      "env": {
+        "JUPYTER_BASE_URL": "${JUPYTER_BASE_URL:-http://localhost:8888}"
+      }
+    },
+    "mcp-redis": {
+      "command": "uvx",
+      "args": ["mcp-server-redis"],
+      "env": {
+        "REDIS_URL": "redis://10.10.10.14:6379"
+      }
+    },
+    "mcp-rabbitmq": {
+      "command": "uvx",
+      "args": ["mcp-server-rabbitmq"],
+      "env": {
+        "RABBITMQ_URL": "${RABBITMQ_URL:-amqp://guest:guest@localhost:5672}"
+      }
+    }
+  }
+}

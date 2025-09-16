@@ -1,0 +1,263 @@
+{
+  "production": true,
+  "name": "MCP Hub Production Server",
+  "version": "4.2.1",
+  
+  "server": {
+    "host": "0.0.0.0",
+    "port": 3456,
+    "corsOrigin": "*",
+    "requestTimeout": 30000,
+    "maxConnections": 1000
+  },
+  
+  "telemetry": {
+    "enabled": true,
+    "collectUsageMetrics": true,
+    "collectErrorMetrics": true,
+    "collectPerformanceMetrics": true,
+    "reportingInterval": 60000,
+    "batchSize": 100,
+    "endpoints": {
+      "metrics": "http://localhost:9090/metrics",
+      "logs": "http://localhost:3100/loki/api/v1/push"
+    }
+  },
+  
+  "mlPipeline": {
+    "enabled": true,
+    "trainingQueue": {
+      "name": "ml-training-jobs",
+      "concurrency": 4,
+      "defaultTimeout": 3600000,
+      "retryAttempts": 3,
+      "retryDelay": 5000
+    },
+    "modelRegistry": {
+      "path": "./models",
+      "autoVersion": true,
+      "retentionPolicy": "30d"
+    },
+    "dataConnectors": {
+      "postgres": {
+        "enabled": true,
+        "connectionUrl": "${DATABASE_URL:-postgresql://localhost:5432/mcp_hub}",
+        "poolSize": 20,
+        "idleTimeout": 10000
+      },
+      "mongodb": {
+        "enabled": true,
+        "uri": "${MONGODB_URI:-mongodb://localhost:27017/mcp_hub}",
+        "options": {
+          "useNewUrlParser": true,
+          "useUnifiedTopology": true
+        }
+      },
+      "redis": {
+        "enabled": true,
+        "host": "${REDIS_HOST:-localhost}",
+        "port": "${REDIS_PORT:-6379}",
+        "db": 0,
+        "keyPrefix": "mcp:"
+      }
+    },
+    "frameworks": {
+      "tensorflow": {
+        "enabled": true,
+        "backend": "cpu"
+      },
+      "pytorch": {
+        "enabled": true,
+        "device": "cpu"
+      },
+      "onnx": {
+        "enabled": true,
+        "providers": ["CPUExecutionProvider"]
+      }
+    }
+  },
+  
+  "docker": {
+    "enabled": false,
+    "strategy": "on-demand",
+    "maxContainers": 50,
+    "dockerConfig": {
+      "socketPath": "/var/run/docker.sock",
+      "imagePrefix": "mcp-servers",
+      "networkName": "mcp-hub-network",
+      "cleanupOnShutdown": true,
+      "healthCheckInterval": 30000
+    },
+    "serverConfigs": {
+      "filesystem": {
+        "image": "mcp-servers/filesystem:latest",
+        "strategy": "on-demand",
+        "volumes": {
+          "/home/daclab-ai/workspace": "/data"
+        }
+      },
+      "mcp-memory": {
+        "image": "mcp-servers/memory:latest",
+        "strategy": "always-on",
+        "resourceLimits": {
+          "memory": "256m",
+          "cpus": "0.25"
+        }
+      }
+    }
+  },
+  
+  "realtime": {
+    "enabled": true,
+    "sse": {
+      "enabled": true,
+      "heartbeatInterval": 30000,
+      "maxConnections": 1000,
+      "compressionEnabled": true
+    },
+    "websocket": {
+      "enabled": false,
+      "pingInterval": 25000,
+      "maxBackpressure": 1024000
+    }
+  },
+  
+  "monitoring": {
+    "enabled": true,
+    "healthCheck": {
+      "enabled": true,
+      "interval": 10000,
+      "timeout": 5000,
+      "endpoints": [
+        "/health",
+        "/api/health",
+        "/api/telemetry/health"
+      ]
+    },
+    "metrics": {
+      "enabled": true,
+      "prometheusEnabled": true,
+      "grafanaEnabled": false,
+      "customMetrics": true
+    },
+    "logging": {
+      "level": "info",
+      "format": "json",
+      "destinations": ["console", "file"],
+      "filePath": "./logs/mcp-hub.log",
+      "maxFileSize": "100m",
+      "maxFiles": 10,
+      "compression": true
+    }
+  },
+  
+  "security": {
+    "enabled": true,
+    "rateLimit": {
+      "enabled": true,
+      "windowMs": 60000,
+      "maxRequests": 100
+    },
+    "cors": {
+      "enabled": true,
+      "origin": "*",
+      "credentials": true
+    },
+    "helmet": {
+      "enabled": true
+    },
+    "authentication": {
+      "enabled": false,
+      "jwtSecret": "${JWT_SECRET:-your-secret-key}",
+      "sessionTimeout": 86400000
+    }
+  },
+  
+  "cache": {
+    "enabled": true,
+    "ttl": 300,
+    "checkPeriod": 60,
+    "maxKeys": 10000,
+    "strategy": "lru"
+  },
+  
+  "optimization": {
+    "clustering": {
+      "enabled": false,
+      "workers": "auto"
+    },
+    "compression": {
+      "enabled": true,
+      "level": 6
+    },
+    "caching": {
+      "static": true,
+      "dynamic": true,
+      "cdnEnabled": false
+    }
+  },
+  
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "disabled": false
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      },
+      "disabled": true
+    },
+    "google-maps": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-google-maps"],
+      "env": {
+        "GOOGLE_MAPS_API_KEY": "${GOOGLE_MAPS_API_KEY}"
+      },
+      "disabled": true
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "disabled": false
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
+      "disabled": true
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
+      },
+      "disabled": true
+    },
+    "fetch": {
+      "command": "node",
+      "args": ["/usr/local/lib/node_modules/@modelcontextprotocol/server-fetch/dist/index.js"],
+      "disabled": true
+    }
+  },
+  
+  "features": {
+    "marketplace": true,
+    "toolRegistry": true,
+    "autoDiscovery": true,
+    "hotReload": true,
+    "devMode": false,
+    "debugMode": false
+  },
+  
+  "performance": {
+    "maxConcurrentRequests": 1000,
+    "requestQueueSize": 10000,
+    "workerPoolSize": 10,
+    "asyncOperationTimeout": 30000,
+    "gcInterval": 300000
+  }
+}

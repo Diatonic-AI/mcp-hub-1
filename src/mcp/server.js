@@ -381,7 +381,20 @@ export class MCPServerEndpoint {
           break;
           
         case HUB_TOOLS.CHAIN_TOOLS.name:
-          result = await this.toolsetRegistry.chainTools(args.chain);
+          result = await this.toolsetRegistry.chainTools(args);
+          break;
+          
+        // MLOps Feature Engineering Tools
+        case HUB_TOOLS.MLOPS_REGISTER_FEATURE_SET.name:
+          result = await this.toolsetRegistry.executeMLOpsTool('register_feature_set', args);
+          break;
+          
+        case HUB_TOOLS.MLOPS_MATERIALIZE_FEATURES.name:
+          result = await this.toolsetRegistry.executeMLOpsTool('materialize_features', args);
+          break;
+          
+        case HUB_TOOLS.MLOPS_GET_FEATURE_VECTOR.name:
+          result = await this.toolsetRegistry.executeMLOpsTool('get_feature_vector', args);
           break;
           
         default:

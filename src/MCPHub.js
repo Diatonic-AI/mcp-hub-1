@@ -8,7 +8,9 @@ import {
   wrapError,
 } from "./utils/errors.js";
 import { ServerLoadingManager } from "./utils/server-loading-manager.js";
+import PostgreSQLManager from './utils/postgresql-manager-fix.js';
 import EventEmitter from "events";
+import { resolvePostgresIntegrationEnv, logPostgresIntegrationResolution } from "./utils/pg-env.js";
 
 export class MCPHub extends EventEmitter {
   constructor(configPathOrObject, { port, watch = false, marketplace, toolIndex, hubServerUrl = null } = {}) {
@@ -38,6 +40,14 @@ export class MCPHub extends EventEmitter {
 
     // Initialize the advanced server loading manager
     this.serverLoadingManager = null;
+    
+    // Get PostgreSQL manager singleton for systematic data operations
+    this.postgresManager = PostgreSQLManager.getInstance();
+    
+    // Resolve PostgreSQL integration settings using central resolver
+    const pgResolution = resolvePostgresIntegrationEnv(process.env);
+    this.enablePostgresIntegration = pgResolution.enabled;
+    this.pgIntegrationReason = pgResolution.reason;
   }
 async initialize(isRestarting) {
     try {
@@ -69,6 +79,26 @@ async initialize(isRestarting) {
             } catch (_) {}
           }
         });
+      }
+
+      // Initialize PostgreSQL manager for systematic data operations
+      logPostgresIntegrationResolution({
+        enabled: this.enablePostgresIntegration,
+        reason: this.pgIntegrationReason,
+        flagsUsed: {} // Already logged in constructor
+      });
+      
+      if (this.enablePostgresIntegration) {
+        try {
+          await this.postgresManager.initialize();
+          this.setupPostgresEventHandlers();
+          logger.info('PostgreSQL integration enabled and initialized');
+        } catch (error) {
+          logger.warn('PostgreSQL initialization failed, continuing without database integration', {
+            error: error.message
+          });
+          this.enablePostgresIntegration = false;
+        }
       }
 
       // Initialize the advanced server loading manager
@@ -476,6 +506,16 @@ async startConfiguredServers() {
     // Disconnect all servers
     await this.disconnectAll();
 
+    // Close PostgreSQL connection
+    if (this.enablePostgresIntegration && this.postgresManager.initialized) {
+      try {
+        await this.postgresManager.close();
+        logger.info("PostgreSQL connection closed");
+      } catch (error) {
+        logger.warn("Error closing PostgreSQL connection", { error: error.message });
+      }
+    }
+
     logger.info("MCP Hub cleanup completed");
   }
 
@@ -682,6 +722,307 @@ async startConfiguredServers() {
       await connection.start();
     }
     return connection;
+  }
+
+  /**
+   * Set up PostgreSQL event handlers for real-time synchronization
+   */
+  setupPostgresEventHandlers() {
+    if (!this.enablePostgresIntegration) return;
+
+    // Sync server status changes to PostgreSQL
+    this.on('serverConnected', async (data) => {
+      try {
+        const { serverName } = data;
+        const connection = this.connections.get(serverName);
+        if (connection) {
+          // Server sync already handled in toolsChanged event, just log status change
+          await this.postgresManager.logServerStatusChange(
+            serverName, 
+            'connected', 
+            connection.previousStatus || 'disconnected',
+            connection.getUptime ? connection.getUptime() : 0
+          );
+        }
+      } catch (error) {
+        logger.warn('Failed to sync server connection to PostgreSQL', {
+          serverName: data.serverName,
+          error: error.message
+        });
+      }
+    });
+
+    this.on('serverDisconnected', async (data) => {
+      try {
+        const { serverName } = data;
+        const connection = this.connections.get(serverName);
+        if (connection) {
+          await this.postgresManager.logServerStatusChange(
+            serverName,
+            'disconnected',
+            'connected',
+            connection.getUptime ? connection.getUptime() : 0
+          );
+        }
+      } catch (error) {
+        logger.warn('Failed to log server disconnection to PostgreSQL', {
+          serverName: data.serverName,
+          error: error.message
+        });
+      }
+    });
+
+    // Sync tool changes to PostgreSQL
+    this.on('toolsChanged', async (data) => {
+      try {
+        const { serverName, tools } = data;
+        if (tools && Array.isArray(tools)) {
+          // Ensure server is registered first before syncing tools
+          const connection = this.connections.get(serverName);
+          if (connection) {
+            try {
+              await this.syncServerToPostgreSQL(connection);
+              logger.debug('Server synced to PostgreSQL before tool sync', { serverName });
+            } catch (serverSyncError) {
+              logger.error('Failed to sync server before tools', {
+                serverName,
+                error: serverSyncError.message
+              });
+              // Don't proceed with tool sync if server sync fails
+              return;
+            }
+          } else {
+            logger.warn('Connection not found for server when syncing tools', { serverName });
+            return;
+          }
+          
+          // Now sync tools
+          for (const tool of tools) {
+            try {
+              await this.syncToolToPostgreSQL(serverName, tool);
+            } catch (toolSyncError) {
+              logger.warn('Failed to sync individual tool to PostgreSQL', {
+                serverName,
+                toolName: tool.name,
+                error: toolSyncError.message
+              });
+              // Continue with other tools even if one fails
+            }
+          }
+        }
+      } catch (error) {
+        logger.warn('Failed to sync tools to PostgreSQL', {
+          serverName: data.serverName,
+          error: error.message
+        });
+      }
+    });
+
+    // Log tool executions to PostgreSQL
+    this.on('toolCalled', async (data) => {
+      try {
+        const { serverName, toolName, args, result, timestamp } = data;
+        const executionId = `${serverName}_${toolName}_${timestamp.getTime()}_${Math.random().toString(36).substr(2, 9)}`;
+        const toolId = `${serverName}__${toolName}`;
+        
+        await this.postgresManager.logToolExecution({
+          executionId,
+          toolId,
+          serverName,
+          toolName,
+          arguments: args,
+          result,
+          status: result.isError ? 'error' : 'completed',
+          durationMs: 0, // Would need to be calculated from actual execution time
+          startedAt: timestamp,
+          completedAt: new Date(),
+          errorMessage: result.isError ? (result.content?.[0]?.text || 'Unknown error') : null
+        });
+      } catch (error) {
+        logger.warn('Failed to log tool execution to PostgreSQL', {
+          toolName: data.toolName,
+          serverName: data.serverName,
+          error: error.message
+        });
+      }
+    });
+
+    // Log hub events to PostgreSQL
+    this.on('importantConfigChanged', async (data) => {
+      try {
+        await this.postgresManager.logHubEvent('config_changed', data, 'info', 'Hub configuration changed');
+      } catch (error) {
+        logger.warn('Failed to log config change to PostgreSQL', { error: error.message });
+      }
+    });
+
+    this.on('importantConfigChangeHandled', async (data) => {
+      try {
+        await this.postgresManager.logHubEvent('config_change_handled', data, 'info', 'Hub configuration change handled');
+      } catch (error) {
+        logger.warn('Failed to log config change completion to PostgreSQL', { error: error.message });
+      }
+    });
+  }
+
+  /**
+   * Synchronize server information to PostgreSQL
+   */
+  async syncServerToPostgreSQL(connection) {
+    if (!this.enablePostgresIntegration || !connection) return;
+
+    try {
+      const serverInfo = connection.getServerInfo();
+      await this.postgresManager.upsertServer(connection.name, {
+        displayName: connection.displayName || connection.name,
+        endpoint: this.hubServerUrl + '/mcp',
+        transportType: connection.transportType || 'stdio',
+        status: connection.status,
+        capabilities: {
+          tools: connection.tools?.length || 0,
+          resources: connection.resources?.length || 0,
+          prompts: connection.prompts?.length || 0
+        },
+        metadata: {
+          serverInfo: connection.serverInfo,
+          uptime: connection.getUptime ? connection.getUptime() : 0,
+          connectionCount: connection.connectionCount || 0,
+          lastConnected: connection.lastStarted
+        },
+        config: {
+          command: connection.config?.command,
+          args: connection.config?.args,
+          env: connection.config?.env ? Object.keys(connection.config.env) : [],
+          disabled: connection.disabled
+        }
+      });
+    } catch (error) {
+      logger.warn('Failed to sync server to PostgreSQL', {
+        serverName: connection.name,
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Synchronize tool information to PostgreSQL
+   */
+  async syncToolToPostgreSQL(serverName, tool) {
+    if (!this.enablePostgresIntegration || !tool) return;
+
+    try {
+      const toolId = `${serverName}__${tool.name}`;
+      await this.postgresManager.upsertTool(serverName, {
+        name: tool.name,
+        description: tool.description || '',
+        inputSchema: tool.inputSchema || {},
+        category: tool.category || 'general',
+        metadata: {
+          registeredAt: new Date().toISOString(),
+          lazyLoadingEnabled: this.hubOptions.lazyLoad,
+          endpoint: this.hubServerUrl + '/mcp'
+        }
+      });
+    } catch (error) {
+      logger.warn('Failed to sync tool to PostgreSQL', {
+        toolName: tool.name,
+        serverName,
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Get comprehensive analytics data from PostgreSQL
+   */
+  async getAnalytics(timeRange = '24 hours') {
+    if (!this.enablePostgresIntegration) {
+      logger.debug('PostgreSQL analytics unavailable', {
+        reason: this.pgIntegrationReason,
+        guidance: 'Set ENABLE_POSTGRESQL_INTEGRATION=true and POSTGRES_PASSWORD to enable'
+      });
+      return {
+        enabled: false,
+        reason: this.pgIntegrationReason,
+        message: 'PostgreSQL integration is not enabled'
+      };
+    }
+
+    try {
+      const [hubMetrics, serverAnalytics, toolAnalytics] = await Promise.all([
+        this.postgresManager.getHubMetrics(timeRange),
+        this.postgresManager.getServerAnalytics(null, timeRange),
+        this.postgresManager.getToolAnalytics(20, timeRange)
+      ]);
+
+      return {
+        enabled: true,
+        timeRange,
+        hubMetrics,
+        serverAnalytics,
+        toolAnalytics,
+        generatedAt: new Date().toISOString()
+      };
+    } catch (error) {
+      logger.error('Failed to get analytics from PostgreSQL', {
+        error: error.message,
+        timeRange
+      });
+      return {
+        enabled: true,
+        error: error.message,
+        timeRange
+      };
+    }
+  }
+
+  /**
+   * Search tools using PostgreSQL advanced search capabilities
+   */
+  async searchToolsAdvanced(searchOptions = {}) {
+    if (!this.enablePostgresIntegration) {
+      // Fallback to regular tool search
+      return this.getAllServerStatuses().flatMap(server => 
+        server.capabilities.tools.map(tool => ({
+          ...tool,
+          serverName: server.name,
+          serverDisplayName: server.displayName
+        }))
+      );
+    }
+
+    try {
+      return await this.postgresManager.searchTools(searchOptions);
+    } catch (error) {
+      logger.error('Failed to search tools in PostgreSQL', {
+        error: error.message,
+        searchOptions
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Get PostgreSQL connection status and statistics
+   */
+  getPostgresStatus() {
+    if (!this.enablePostgresIntegration) {
+      return { 
+        enabled: false,
+        reason: this.pgIntegrationReason
+      };
+    }
+
+    return {
+      enabled: true,
+      initialized: this.postgresManager.initialized,
+      poolStatus: this.postgresManager.getPoolStatus(),
+      config: {
+        host: this.postgresManager.config.host,
+        port: this.postgresManager.config.port,
+        database: this.postgresManager.config.database
+      }
+    };
   }
 }
 

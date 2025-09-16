@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Hub Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f6fa;
+            color: #2f3542;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #3742fa;
+            margin-bottom: 10px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            color: #747d8c;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .connected { color: #2ed573; }
+        .disconnected { color: #ff4757; }
+        .oauth { color: #ffa502; }
+        
+        .servers-section {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .section-header {
+            background: #3742fa;
+            color: white;
+            padding: 15px 20px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .refresh-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        
+        .refresh-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .server-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .server-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .server-item:last-child {
+            border-bottom: none;
+        }
+        
+        .server-info {
+            flex: 1;
+        }
+        
+        .server-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .server-description {
+            font-size: 0.9em;
+            color: #747d8c;
+        }
+        
+        .server-status {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-connected {
+            background: #2ed573;
+            color: white;
+        }
+        
+        .status-disconnected {
+            background: #ff4757;
+            color: white;
+        }
+        
+        .status-connecting {
+            background: #ffa502;
+            color: white;
+        }
+        
+        .oauth-info {
+            margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        
+        .oauth-entry {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #3742fa;
+        }
+        
+        .oauth-entry:last-child {
+            margin-bottom: 0;
+        }
+        
+        .oauth-url {
+            font-weight: 600;
+            margin-bottom: 5px;
+            word-break: break-all;
+        }
+        
+        .oauth-status {
+            font-size: 0.9em;
+            color: #747d8c;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.1em;
+            color: #747d8c;
+        }
+        
+        .error {
+            background: #ff4757;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        .last-updated {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #747d8c;
+        }
+        
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .server-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 MCP Hub Dashboard</h1>
+            <p>Model Context Protocol Hub - Real-time Server Monitoring</p>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number connected" id="connected-count">-</div>
+                <div class="stat-label">Connected</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number disconnected" id="disconnected-count">-</div>
+                <div class="stat-label">Disconnected</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number oauth" id="oauth-count">-</div>
+                <div class="stat-label">OAuth Servers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="total-count">-</div>
+                <div class="stat-label">Total Servers</div>
+            </div>
+        </div>
+        
+        <div class="servers-section">
+            <div class="section-header">
+                <span>MCP Servers</span>
+                <button class="refresh-btn" onclick="refreshData()">🔄 Refresh</button>
+            </div>
+            <div class="server-list" id="server-list">
+                <div class="loading">Loading servers...</div>
+            </div>
+        </div>
+        
+        <div class="oauth-info">
+            <h3 style="margin-bottom: 15px; color: #3742fa;">OAuth Storage Status</h3>
+            <div id="oauth-storage">
+                <div class="loading">Loading OAuth information...</div>
+            </div>
+        </div>
+        
+        <div class="last-updated" id="last-updated"></div>
+    </div>
+
+    <script>
+        const HUB_URL = 'http://localhost:37373';
+        
+        // OAuth descriptions for identification
+        const OAUTH_KEYWORDS = ['oauth', 'google workspace', 'cloudflare', 'wix', 'microsoft'];
+        
+        function isOAuthServer(server) {
+            return OAUTH_KEYWORDS.some(keyword => 
+                server.description?.toLowerCase().includes(keyword)
+            );
+        }
+        
+        async function fetchData(endpoint) {
+            try {
+                const response = await fetch(`${HUB_URL}/api/${endpoint}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error(`Error fetching ${endpoint}:`, error);
+                throw error;
+            }
+        }
+        
+        async function fetchServers() {
+            const data = await fetchData('servers');
+            return data.servers || [];
+        }
+        
+        async function loadOAuthStorage() {
+            // Since we can't directly access the OAuth storage file from the browser,
+            // we'll simulate it based on the server descriptions
+            const servers = await fetchServers();
+            const oauthServers = servers.filter(isOAuthServer);
+            
+            return {
+                entries: oauthServers.length,
+                servers: oauthServers.map(server => ({
+                    url: server.endpoint,
+                    name: server.name,
+                    hasTokens: server.status === 'connected',
+                    hasClientInfo: true // Assume true for connected OAuth servers
+                }))
+            };
+        }
+        
+        function renderServers(servers) {
+            const serverList = document.getElementById('server-list');
+            
+            if (servers.length === 0) {
+                serverList.innerHTML = '<div class="loading">No servers found</div>';
+                return;
+            }
+            
+            serverList.innerHTML = servers.map(server => `
+                <div class="server-item">
+                    <div class="server-info">
+                        <div class="server-name">${server.name}</div>
+                        <div class="server-description">${server.description || 'No description'}</div>
+                    </div>
+                    <div class="server-status status-${server.status}">${server.status}</div>
+                </div>
+            `).join('');
+        }
+        
+        function renderOAuthStorage(oauthData) {
+            const oauthStorage = document.getElementById('oauth-storage');
+            
+            if (oauthData.servers.length === 0) {
+                oauthStorage.innerHTML = '<p>No OAuth servers configured</p>';
+                return;
+            }
+            
+            oauthStorage.innerHTML = oauthData.servers.map(server => `
+                <div class="oauth-entry">
+                    <div class="oauth-url">${server.name}</div>
+                    <div class="oauth-status">
+                        Tokens: ${server.hasTokens ? '✅' : '❌'} | 
+                        Client Info: ${server.hasClientInfo ? '✅' : '❌'} | 
+                        URL: ${server.url}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function updateStats(servers) {
+            const connected = servers.filter(s => s.status === 'connected').length;
+            const disconnected = servers.filter(s => s.status === 'disconnected').length;
+            const oauthCount = servers.filter(isOAuthServer).length;
+            const total = servers.length;
+            
+            document.getElementById('connected-count').textContent = connected;
+            document.getElementById('disconnected-count').textContent = disconnected;
+            document.getElementById('oauth-count').textContent = oauthCount;
+            document.getElementById('total-count').textContent = total;
+        }
+        
+        async function refreshData() {
+            try {
+                document.getElementById('server-list').innerHTML = '<div class="loading">Refreshing...</div>';
+                document.getElementById('oauth-storage').innerHTML = '<div class="loading">Refreshing...</div>';
+                
+                const [servers, oauthData] = await Promise.all([
+                    fetchServers(),
+                    loadOAuthStorage()
+                ]);
+                
+                updateStats(servers);
+                renderServers(servers);
+                renderOAuthStorage(oauthData);
+                
+                document.getElementById('last-updated').textContent = 
+                    `Last updated: ${new Date().toLocaleTimeString()}`;
+                    
+                // Remove any existing error messages
+                const existingError = document.querySelector('.error');
+                if (existingError) {
+                    existingError.remove();
+                }
+                
+            } catch (error) {
+                console.error('Error refreshing data:', error);
+                
+                // Show error message
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error';
+                errorDiv.textContent = `Error loading data: ${error.message}`;
+                
+                const container = document.querySelector('.container');
+                const existingError = document.querySelector('.error');
+                if (existingError) {
+                    existingError.remove();
+                }
+                container.insertBefore(errorDiv, container.firstChild.nextSibling);
+            }
+        }
+        
+        // Initial load
+        refreshData();
+        
+        // Auto-refresh every 30 seconds
+        setInterval(refreshData, 30000);
+        
+        // Add keyboard shortcut for refresh (Ctrl/Cmd + R)
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+                e.preventDefault();
+                refreshData();
+            }
+        });
+        
+        console.log('MCP Hub Dashboard initialized');
+        console.log('- Auto-refresh: every 30 seconds');
+        console.log('- Manual refresh: Ctrl/Cmd + R or click the refresh button');
+        console.log('- Hub URL:', HUB_URL);
+    </script>
+</body>
+</html>

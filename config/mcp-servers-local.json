@@ -1,0 +1,82 @@
+{
+  "hub": {
+    "metaOnly": true,
+    "lazyLoad": true
+  },
+  "mcpServers": {
+    "google-workspace": {
+      "url": "http://google-workspace-mcp:8000/mcp",
+      "headers": {
+        "Accept": "application/json, text/event-stream"
+      },
+      "description": "Google Workspace server - OAuth authenticated with our tenant credentials via streamable HTTP"
+    },
+    "n8n-mcp-modern": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@lexinet/n8n-mcp-modern"
+      ],
+      "env": {
+        "N8N_API_URL": "http://n8n-working-n8n-1:5678",
+        "N8N_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0MDhjMjRkZS01YjI4LTQwMjItYjJhOC1iY2IyOTg2NGUwZmEiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzU3MDgxNjY5LCJleHAiOjE3NTk2MzY4MDB9.j2fw6vUQnP6URmkVe8yXgoEb2KYebi4ur2Z3aEk1Mg0",
+        "LOG_LEVEL": "info",
+        "ENABLE_CACHE": "true",
+        "MCP_MODE": "stdio",
+        "ENABLE_DISCOVERY": "true",
+        "MAX_CONCURRENT_REQUESTS": "10"
+      },
+      "description": "Modern n8n MCP server with 15-agent architecture, dynamic node discovery, and full workflow automation capabilities"
+    },
+    "cloudflare-docs-disabled": {
+      "disabled": true,
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://docs.mcp.cloudflare.com/sse"
+      ],
+      "description": "Cloudflare Documentation MCP Server - DISABLED: requires interactive OAuth"
+    },
+    "cloudflare-workers-bindings-disabled": {
+      "disabled": true,
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://bindings.mcp.cloudflare.com/sse"
+      ],
+      "description": "Cloudflare Workers Bindings MCP Server - DISABLED: requires interactive OAuth"
+    },
+    "cloudflare-radar-disabled": {
+      "disabled": true,
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://radar.mcp.cloudflare.com/sse"
+      ],
+      "description": "Cloudflare Radar MCP Server - DISABLED: requires interactive OAuth"
+    },
+    "cloudflare-browser-disabled": {
+      "disabled": true,
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://browser.mcp.cloudflare.com/sse"
+      ],
+      "description": "Cloudflare Browser Rendering MCP Server - DISABLED: requires interactive OAuth"
+    },
+    "cloudflare-observability-disabled": {
+      "disabled": true,
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://observability.mcp.cloudflare.com/sse"
+      ],
+      "description": "Cloudflare Observability MCP Server - DISABLED: requires interactive OAuth"
+    }
+  }
+}

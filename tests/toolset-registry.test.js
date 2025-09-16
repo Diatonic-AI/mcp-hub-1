@@ -294,13 +294,10 @@ describe("ToolsetRegistry", () => {
   });
 
   describe("Tool Chaining", () => {
-    it("should handle empty chain", async () => {
-      const result = await toolsetRegistry.chainTools({ chain: [] });
-      
-      expect(result).toHaveProperty("content");
-      expect(result.content[0].text).toContain("Empty chain");
-      expect(result.isError).toBe(false);
-      expect(result.chainResults).toHaveLength(0);
+    it("should handle empty chain with proper error", async () => {
+      await expect(toolsetRegistry.chainTools({ chain: [] })).rejects.toThrow(
+        "Chain specification validation failed: Chain cannot be empty"
+      );
     });
   });
 });
