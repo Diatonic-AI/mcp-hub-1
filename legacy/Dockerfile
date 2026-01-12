@@ -1,5 +1,5 @@
 # Enhanced production Dockerfile with Python/uvx support for MCP servers
-FROM node:24.7.0-alpine
+FROM node:24.12.0-alpine@sha256:c720a25dd3a78e6274d55267e76d89e5c096c46940b5ea83f7a99978feb0b514
 
 # Install system dependencies for Python servers
 RUN apk update && apk add --no-cache \
