@@ -1,5 +1,5 @@
 # Optimized production-only Dockerfile using pre-built assets
-FROM node:24.12.0-alpine AS production
+FROM node:24.12.0-alpine@sha256:c720a25dd3a78e6274d55267e76d89e5c096c46940b5ea83f7a99978feb0b514 AS production
 
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init curl
